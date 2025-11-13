@@ -12,6 +12,7 @@ public class Consultorio {
     Long numero;
 
     @OneToMany(mappedBy = "consultorio")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Paciente> pacientes;
 
     public Consultorio() {

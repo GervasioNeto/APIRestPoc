@@ -70,4 +70,17 @@ public class Paciente {
     public void setConsultorio(Consultorio consultorio) {
         this.consultorio = consultorio;
     }
+
+    public Risco getRisco (){
+        return risco;
+    }
+    public void setRisco (Risco risco){
+        this.risco = risco;
+    }
+    public TipoAtendimento getTipo (){
+        return tipo;
+    }
+    public void setTipo(TipoAtendimento tipo){
+        this.tipo = tipo;
+    }
 }
