@@ -19,6 +19,12 @@ public class ConsultorioController {
         return repository.findAll();
     }
 
+    @GetMapping("/{id}")
+    public Consultorio buscarPorId(@PathVariable Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Consultório não encontrado"));
+    }
+
     @PostMapping
     public Consultorio criar(@RequestBody Consultorio consultorio) {
         return repository.save(consultorio);
