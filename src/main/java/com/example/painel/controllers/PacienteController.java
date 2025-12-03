@@ -47,6 +47,7 @@ public class PacienteController {
 
         p.setRisco(dadosParciais.getRisco());
         p.setTipo(dadosParciais.getTipo());
+        p.setTriageNotes(dadosParciais.getTriageNotes());
 
         return ResponseEntity.ok(pacienteRepository.save(p));
     }

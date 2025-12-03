@@ -14,6 +14,7 @@ public class Paciente {
 
     String nome;
     String cpf;
+    private String triageNotes;
 
     @Enumerated(EnumType.STRING)
     private Risco risco;
@@ -82,5 +83,13 @@ public class Paciente {
     }
     public void setTipo(TipoAtendimento tipo){
         this.tipo = tipo;
+    }
+
+    public String getTriageNotes() {
+        return triageNotes;
+    }
+
+    public void setTriageNotes(String triageNotes) {
+        this.triageNotes = triageNotes;
     }
 }
