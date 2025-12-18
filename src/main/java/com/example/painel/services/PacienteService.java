@@ -89,4 +89,30 @@ public class PacienteService {
         p.setStatus(TipoStatus.DESISTENCIA);
         return pacienteRepository.save(p);
     }
+
+    @Transactional
+    public Paciente rechamarPaciente(Long id) {
+        Paciente p = buscarPorId(id);
+
+        if (p.getConsultorio() == null) {
+            throw new RuntimeException("Paciente não está em atendimento");
+        }
+
+        // NÃO remove da consulta
+        // Apenas dispara novo chamado
+        p.setStatus(TipoStatus.CHAMADO);
+
+        return pacienteRepository.save(p);
+    }
+
+
+    @Transactional
+    public Paciente recolocarNaFila(Long id) {
+        Paciente p = buscarPorId(id);
+
+        p.setConsultorio(null);
+        p.setStatus(TipoStatus.AGUARDANDO_CONSULTA);
+
+        return pacienteRepository.save(p);
+    }
 }

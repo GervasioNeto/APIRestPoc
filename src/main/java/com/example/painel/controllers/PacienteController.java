@@ -60,4 +60,14 @@ public class PacienteController {
     public ResponseEntity<Paciente> desistencia(@PathVariable Long id) {
         return ResponseEntity.ok(pacienteService.registrarDesistencia(id));
     }
+
+    @PutMapping("/{id}/rechamar")
+    public ResponseEntity<Paciente> rechamar(@PathVariable Long id) {
+        return ResponseEntity.ok(pacienteService.rechamarPaciente(id));
+    }
+
+    @PutMapping("/{id}/recolocar-fila")
+    public ResponseEntity<Paciente> recolocarFila(@PathVariable Long id) {
+        return ResponseEntity.ok(pacienteService.recolocarNaFila(id));
+    }
 }
