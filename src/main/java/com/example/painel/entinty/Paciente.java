@@ -2,6 +2,7 @@ package com.example.painel.entinty;
 
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
+import com.example.painel.enums.TipoStatus;
 import jakarta.persistence.*;
 
 
@@ -10,11 +11,14 @@ public class Paciente {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
+    private Long id;
 
-    String nome;
-    String cpf;
+    private String nome;
+    private String cpf;
     private String triageNotes;
+
+    @Enumerated(EnumType.STRING)
+    private TipoStatus status;
 
     @Enumerated(EnumType.STRING)
     private Risco risco;
@@ -91,5 +95,13 @@ public class Paciente {
 
     public void setTriageNotes(String triageNotes) {
         this.triageNotes = triageNotes;
+    }
+
+    public TipoStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(TipoStatus status) {
+        this.status = status;
     }
 }

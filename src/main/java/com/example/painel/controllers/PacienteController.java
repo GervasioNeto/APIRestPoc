@@ -1,10 +1,7 @@
 package com.example.painel.controllers;
 
-import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
-import com.example.painel.repository.ConsultorioRepository;
-import com.example.painel.repository.PacienteRepository;
-import com.example.painel.repository.TriagemRepository;
+import com.example.painel.services.PacienteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,60 +13,51 @@ import java.util.List;
 public class PacienteController {
 
     @Autowired
-    private PacienteRepository pacienteRepository;
-
-    @Autowired
-    private ConsultorioRepository consultorioRepository;
-
-    @Autowired
-    private TriagemRepository triagemRepository;
+    private PacienteService pacienteService;
 
     @PostMapping
     public ResponseEntity<Paciente> criar(@RequestBody Paciente paciente) {
-        return ResponseEntity.ok(pacienteRepository.save(paciente));
+        return ResponseEntity.ok(pacienteService.criar(paciente));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Paciente>> listarTodos() {
+        return ResponseEntity.ok(pacienteService.listarTodos());
     }
 
     @GetMapping("/aguardando-triagem")
     public ResponseEntity<List<Paciente>> listarParaTriagem() {
-        List<Paciente> lista = pacienteRepository.findAll().stream()
-                .filter(p -> p.getRisco() == null)
-                .toList();
-        return ResponseEntity.ok(lista);
+        return ResponseEntity.ok(pacienteService.listarAguardandoTriagem());
     }
 
     @PutMapping("/{id}/classificar")
-    public ResponseEntity<Paciente> classificar(
-            @PathVariable Long id,
-            @RequestBody Paciente dadosParciais) {
-
-        Paciente p = pacienteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Paciente não encontrado"));
-
-        p.setRisco(dadosParciais.getRisco());
-        p.setTipo(dadosParciais.getTipo());
-        p.setTriageNotes(dadosParciais.getTriageNotes());
-
-        return ResponseEntity.ok(pacienteRepository.save(p));
+    public ResponseEntity<Paciente> classificar(@PathVariable Long id, @RequestBody Paciente dados) {
+        return ResponseEntity.ok(pacienteService.classificar(id, dados));
     }
 
     @GetMapping("/aguardando-medico")
     public ResponseEntity<List<Paciente>> listarFilaMedica() {
-        return ResponseEntity.ok(pacienteRepository.buscarFilaDeEsperaOrdenada());
+        return ResponseEntity.ok(pacienteService.listarFilaMedica());
     }
 
     @PutMapping("/{id}/chamar")
-    public ResponseEntity<Paciente> chamar(
-            @PathVariable Long id,
-            @RequestParam Long consultorioId) {
+    public ResponseEntity<Paciente> chamar(@PathVariable Long id, @RequestParam Long consultorioId) {
+        return ResponseEntity.ok(pacienteService.chamarParaConsultorio(id, consultorioId));
+    }
 
-        Paciente p = pacienteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Paciente não encontrado"));
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+        pacienteService.deletar(id);
+        return ResponseEntity.noContent().build();
+    }
 
-        Consultorio c = consultorioRepository.findById(consultorioId)
-                .orElseThrow(() -> new RuntimeException("Consultório não encontrado"));
+    @PutMapping("/{id}/finalizar")
+    public ResponseEntity<Paciente> finalizar(@PathVariable Long id) {
+        return ResponseEntity.ok(pacienteService.finalizarAtendimento(id));
+    }
 
-        p.setConsultorio(c);
-
-        return ResponseEntity.ok(pacienteRepository.save(p));
+    @PutMapping("/{id}/desistencia")
+    public ResponseEntity<Paciente> desistencia(@PathVariable Long id) {
+        return ResponseEntity.ok(pacienteService.registrarDesistencia(id));
     }
 }
