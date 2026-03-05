@@ -5,6 +5,8 @@ import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 
 @Entity
 public class Paciente {
@@ -33,6 +35,8 @@ public class Paciente {
     @ManyToOne
     @JoinColumn(name = "consultorio_id")
     private Consultorio consultorio;
+
+    private LocalDateTime classifiedAt;
 
     public Paciente() {}
 
@@ -104,4 +108,8 @@ public class Paciente {
     public void setStatus(TipoStatus status) {
         this.status = status;
     }
+
+    public LocalDateTime getClassifiedAt() { return classifiedAt; }
+
+    public void setClassifiedAt(LocalDateTime classifiedAt) { this.classifiedAt = classifiedAt; }
 }
