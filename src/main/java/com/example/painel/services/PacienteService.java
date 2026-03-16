@@ -1,5 +1,6 @@
 package com.example.painel.services;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,6 +58,7 @@ public class PacienteService {
         p.setRisco(dados.getRisco());
         p.setTipo(dados.getTipo());
         p.setTriageNotes(dados.getTriageNotes());
+        p.setClassifiedAt(LocalDateTime.now());
         p.setStatus(TipoStatus.AGUARDANDO_CONSULTA);
         return pacienteRepository.save(p);
     }
