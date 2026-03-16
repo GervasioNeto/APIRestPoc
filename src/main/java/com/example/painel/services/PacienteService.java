@@ -1,16 +1,17 @@
 package com.example.painel.services;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
 import com.example.painel.enums.TipoStatus;
 import com.example.painel.repository.ConsultorioRepository;
 import com.example.painel.repository.PacienteRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class PacienteService {
@@ -94,17 +95,13 @@ public class PacienteService {
     public Paciente rechamarPaciente(Long id) {
         Paciente p = buscarPorId(id);
 
-        if (p.getConsultorio() == null) {
-            throw new RuntimeException("Paciente não está em atendimento");
-        }
+        // Removemos a verificação "if (p.getConsultorio() == null)" 
+        // para não bloquear a rechamada na fase de Triagem.
 
-        // NÃO remove da consulta
-        // Apenas dispara novo chamado
         p.setStatus(TipoStatus.CHAMADO);
 
         return pacienteRepository.save(p);
     }
-
 
     @Transactional
     public Paciente recolocarNaFila(Long id) {
