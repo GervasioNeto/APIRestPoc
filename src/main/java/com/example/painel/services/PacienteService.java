@@ -22,6 +22,9 @@ public class PacienteService {
     @Autowired
     private ConsultorioRepository consultorioRepository;
 
+    @Autowired
+    private ChamadaPainelService chamadaPainelService;
+
     // CRUD Básico
     public List<Paciente> listarTodos() {
         return pacienteRepository.findAll();
@@ -67,6 +70,18 @@ public class PacienteService {
     }
 
     @Transactional
+    public Paciente chamarParaTriagem(Long id) {
+        Paciente p = buscarPorId(id);
+
+        p.setStatus(TipoStatus.CHAMADO);
+
+        Paciente salvo = pacienteRepository.save(p);
+        chamadaPainelService.registrarChamadaTriagem(salvo);
+
+        return salvo;
+    }
+
+    @Transactional
     public Paciente chamarParaConsultorio(Long id, Long consultorioId) {
         Paciente p = buscarPorId(id);
         Consultorio c = consultorioRepository.findById(consultorioId)
@@ -75,7 +90,10 @@ public class PacienteService {
         p.setConsultorio(c);
         p.setStatus(TipoStatus.CHAMADO);
 
-        return pacienteRepository.save(p);
+        Paciente salvo = pacienteRepository.save(p);
+        chamadaPainelService.registrarChamadaConsultorio(salvo, c);
+
+        return salvo;
     }
 
     @Transactional
@@ -104,7 +122,10 @@ public class PacienteService {
         // Apenas dispara novo chamado
         p.setStatus(TipoStatus.CHAMADO);
 
-        return pacienteRepository.save(p);
+        Paciente salvo = pacienteRepository.save(p);
+        chamadaPainelService.registrarChamadaConsultorio(salvo, salvo.getConsultorio());
+
+        return salvo;
     }
 
 

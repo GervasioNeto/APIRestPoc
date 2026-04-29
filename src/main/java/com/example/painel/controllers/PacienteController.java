@@ -40,6 +40,11 @@ public class PacienteController {
         return ResponseEntity.ok(pacienteService.listarFilaMedica());
     }
 
+    @PutMapping("/{id}/chamar-triagem")
+    public ResponseEntity<Paciente> chamarTriagem(@PathVariable Long id) {
+        return ResponseEntity.ok(pacienteService.chamarParaTriagem(id));
+    }
+
     @PutMapping("/{id}/chamar")
     public ResponseEntity<Paciente> chamar(@PathVariable Long id, @RequestParam Long consultorioId) {
         return ResponseEntity.ok(pacienteService.chamarParaConsultorio(id, consultorioId));
