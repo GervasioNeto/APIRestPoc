@@ -100,6 +100,7 @@ public class PacienteService {
     public Paciente finalizarAtendimento(Long id) {
         Paciente p = buscarPorId(id);
         p.setStatus(TipoStatus.FINALIZADO);
+        anonimizar(p);
         return pacienteRepository.save(p);
     }
 
@@ -107,8 +108,10 @@ public class PacienteService {
     public Paciente registrarDesistencia(Long id) {
         Paciente p = buscarPorId(id);
         p.setStatus(TipoStatus.DESISTENCIA);
+        anonimizar(p);
         return pacienteRepository.save(p);
     }
+
 
     @Transactional
     public Paciente rechamarPaciente(Long id) {
@@ -137,5 +140,11 @@ public class PacienteService {
         p.setStatus(TipoStatus.AGUARDANDO_CONSULTA);
 
         return pacienteRepository.save(p);
+    }
+
+    private void anonimizar(Paciente p) {
+        p.setNome("Paciente Anônimo");
+        p.setCpf("000.000.000-00");
+        p.setTriageNotes(null);
     }
 }
