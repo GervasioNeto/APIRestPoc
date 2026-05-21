@@ -50,7 +50,9 @@ public class PacienteService {
     // Regras de Negócio Específicas
     public List<Paciente> listarAguardandoTriagem() {
         return pacienteRepository.findAll().stream()
-                .filter(p -> p.getRisco() == null)
+                .filter(p -> p.getRisco() == null
+                        && p.getStatus() != TipoStatus.FINALIZADO
+                        && p.getStatus() != TipoStatus.DESISTENCIA)
                 .collect(Collectors.toList());
     }
 
