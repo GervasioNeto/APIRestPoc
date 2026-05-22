@@ -38,6 +38,7 @@ public class PacienteService {
     @Transactional
     public Paciente criar(Paciente paciente) {
         paciente.setStatus(TipoStatus.AGUARDANDO_TRIAGEM);
+        paciente.setChegadaAt(LocalDateTime.now());
         return pacienteRepository.save(paciente);
     }
 

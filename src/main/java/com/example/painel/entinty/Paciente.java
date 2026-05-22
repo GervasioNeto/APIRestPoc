@@ -36,6 +36,8 @@ public class Paciente {
     @JoinColumn(name = "consultorio_id")
     private Consultorio consultorio;
 
+    private LocalDateTime chegadaAt;
+
     private LocalDateTime classifiedAt;
 
     public Paciente() {}
@@ -108,6 +110,10 @@ public class Paciente {
     public void setStatus(TipoStatus status) {
         this.status = status;
     }
+
+    public LocalDateTime getChegadaAt() { return chegadaAt; }
+
+    public void setChegadaAt(LocalDateTime chegadaAt) { this.chegadaAt = chegadaAt; }
 
     public LocalDateTime getClassifiedAt() { return classifiedAt; }
 
