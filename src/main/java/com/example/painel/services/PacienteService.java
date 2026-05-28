@@ -99,19 +99,15 @@ public class PacienteService {
     }
 
     @Transactional
-    public Paciente finalizarAtendimento(Long id) {
+    public void finalizarAtendimento(Long id) {
         Paciente p = buscarPorId(id);
-        p.setStatus(TipoStatus.FINALIZADO);
-        anonimizar(p);
-        return pacienteRepository.save(p);
+        pacienteRepository.delete(p);
     }
 
     @Transactional
-    public Paciente registrarDesistencia(Long id) {
+    public void registrarDesistencia(Long id) {
         Paciente p = buscarPorId(id);
-        p.setStatus(TipoStatus.DESISTENCIA);
-        anonimizar(p);
-        return pacienteRepository.save(p);
+        pacienteRepository.delete(p);
     }
 
 

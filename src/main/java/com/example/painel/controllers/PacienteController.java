@@ -57,13 +57,15 @@ public class PacienteController {
     }
 
     @PutMapping("/{id}/finalizar")
-    public ResponseEntity<Paciente> finalizar(@PathVariable Long id) {
-        return ResponseEntity.ok(pacienteService.finalizarAtendimento(id));
+    public ResponseEntity<Void> finalizar(@PathVariable Long id) {
+        pacienteService.finalizarAtendimento(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}/desistencia")
-    public ResponseEntity<Paciente> desistencia(@PathVariable Long id) {
-        return ResponseEntity.ok(pacienteService.registrarDesistencia(id));
+    public ResponseEntity<Void> desistencia(@PathVariable Long id) {
+        pacienteService.registrarDesistencia(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}/rechamar")
