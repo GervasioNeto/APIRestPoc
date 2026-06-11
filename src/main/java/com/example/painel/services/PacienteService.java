@@ -22,6 +22,9 @@ public class PacienteService {
     @Autowired
     private ConsultorioRepository consultorioRepository;
 
+    @Autowired
+    private ChamadaPainelService chamadaPainelService;
+
     // CRUD Básico
     public List<Paciente> listarTodos() {
         return pacienteRepository.findAll();
@@ -35,6 +38,7 @@ public class PacienteService {
     @Transactional
     public Paciente criar(Paciente paciente) {
         paciente.setStatus(TipoStatus.AGUARDANDO_TRIAGEM);
+        paciente.setChegadaAt(LocalDateTime.now());
         return pacienteRepository.save(paciente);
     }
 
@@ -47,7 +51,9 @@ public class PacienteService {
     // Regras de Negócio Específicas
     public List<Paciente> listarAguardandoTriagem() {
         return pacienteRepository.findAll().stream()
-                .filter(p -> p.getRisco() == null)
+                .filter(p -> p.getRisco() == null
+                        && p.getStatus() != TipoStatus.FINALIZADO
+                        && p.getStatus() != TipoStatus.DESISTENCIA)
                 .collect(Collectors.toList());
     }
 
@@ -67,6 +73,18 @@ public class PacienteService {
     }
 
     @Transactional
+    public Paciente chamarParaTriagem(Long id) {
+        Paciente p = buscarPorId(id);
+
+        p.setStatus(TipoStatus.CHAMADO);
+
+        Paciente salvo = pacienteRepository.save(p);
+        chamadaPainelService.registrarChamadaTriagem(salvo);
+
+        return salvo;
+    }
+
+    @Transactional
     public Paciente chamarParaConsultorio(Long id, Long consultorioId) {
         Paciente p = buscarPorId(id);
         Consultorio c = consultorioRepository.findById(consultorioId)
@@ -75,22 +93,24 @@ public class PacienteService {
         p.setConsultorio(c);
         p.setStatus(TipoStatus.CHAMADO);
 
-        return pacienteRepository.save(p);
+        Paciente salvo = pacienteRepository.save(p);
+        chamadaPainelService.registrarChamadaConsultorio(salvo, c);
+
+        return salvo;
     }
 
     @Transactional
-    public Paciente finalizarAtendimento(Long id) {
+    public void finalizarAtendimento(Long id) {
         Paciente p = buscarPorId(id);
-        p.setStatus(TipoStatus.FINALIZADO);
-        return pacienteRepository.save(p);
+        pacienteRepository.delete(p);
     }
 
     @Transactional
-    public Paciente registrarDesistencia(Long id) {
+    public void registrarDesistencia(Long id) {
         Paciente p = buscarPorId(id);
-        p.setStatus(TipoStatus.DESISTENCIA);
-        return pacienteRepository.save(p);
+        pacienteRepository.delete(p);
     }
+
 
     @Transactional
     public Paciente rechamarPaciente(Long id) {
@@ -104,7 +124,10 @@ public class PacienteService {
         // Apenas dispara novo chamado
         p.setStatus(TipoStatus.CHAMADO);
 
-        return pacienteRepository.save(p);
+        Paciente salvo = pacienteRepository.save(p);
+        chamadaPainelService.registrarChamadaConsultorio(salvo, salvo.getConsultorio());
+
+        return salvo;
     }
 
 
@@ -116,5 +139,11 @@ public class PacienteService {
         p.setStatus(TipoStatus.AGUARDANDO_CONSULTA);
 
         return pacienteRepository.save(p);
+    }
+
+    private void anonimizar(Paciente p) {
+        p.setNome("Paciente Anônimo");
+        p.setCpf("000.000.000-00");
+        p.setTriageNotes(null);
     }
 }
