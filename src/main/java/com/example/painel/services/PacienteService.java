@@ -77,6 +77,7 @@ public class PacienteService {
         Paciente p = buscarPorId(id);
 
         p.setStatus(TipoStatus.CHAMADO);
+        p.setChamadaTriagemAt(LocalDateTime.now());
 
         Paciente salvo = pacienteRepository.save(p);
         chamadaPainelService.registrarChamadaTriagem(salvo);
@@ -92,6 +93,7 @@ public class PacienteService {
 
         p.setConsultorio(c);
         p.setStatus(TipoStatus.CHAMADO);
+        p.setChamadaConsultorioAt(LocalDateTime.now());
 
         Paciente salvo = pacienteRepository.save(p);
         chamadaPainelService.registrarChamadaConsultorio(salvo, c);
@@ -102,13 +104,20 @@ public class PacienteService {
     @Transactional
     public void finalizarAtendimento(Long id) {
         Paciente p = buscarPorId(id);
-        pacienteRepository.delete(p);
+        p.setStatus(TipoStatus.FINALIZADO);
+        p.setAtendimentoFinalizadoAt(LocalDateTime.now());
+        anonimizar(p);
+        pacienteRepository.save(p);
     }
 
     @Transactional
     public void registrarDesistencia(Long id) {
         Paciente p = buscarPorId(id);
-        pacienteRepository.delete(p);
+        p.setEtapaDesistencia(p.getStatus());
+        p.setStatus(TipoStatus.DESISTENCIA);
+        p.setAtendimentoFinalizadoAt(LocalDateTime.now());
+        anonimizar(p);
+        pacienteRepository.save(p);
     }
 
 
