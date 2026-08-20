@@ -45,7 +45,8 @@ public class PacienteService {
     @Transactional
     public void deletar(Long id) {
         Paciente p = buscarPorId(id);
-        pacienteRepository.delete(p);
+        anonimizar(p);
+        pacienteRepository.save(p);
     }
 
     // Regras de Negócio Específicas
