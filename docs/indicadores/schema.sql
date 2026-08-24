@@ -79,6 +79,21 @@ CREATE TABLE protocolo_tempo (
     UNIQUE (risco, tipo)
 );
 
+-- Valores confirmados com o hospital em 2026-08-21 (adaptação do
+-- Protocolo de Manchester). CLINICO só usa VERMELHO/LARANJA,
+-- PSIQUIATRICO usa as 5 cores, SAMU só usa LARANJA.
+-- Rodar manualmente 1x por ambiente (não é executado pelo programa).
+INSERT INTO protocolo_tempo (risco, tipo, tempo_maximo_minutos) VALUES
+    ('VERMELHO', 'CLINICO',      0),
+    ('LARANJA',  'CLINICO',      10),
+    ('VERMELHO', 'PSIQUIATRICO', 0),
+    ('LARANJA',  'PSIQUIATRICO', 10),
+    ('AMARELO',  'PSIQUIATRICO', 60),
+    ('VERDE',    'PSIQUIATRICO', 120),
+    ('AZUL',     'PSIQUIATRICO', 240),
+    ('LARANJA',  'SAMU',         10)
+ON CONFLICT (risco, tipo) DO NOTHING;
+
 -- =====================================================================
 -- Mapeamento indicador -> colunas (docs/indicadores/indicadores.xlsx)
 -- Todas as consultas abaixo usam a tabela `paciente` diretamente,
