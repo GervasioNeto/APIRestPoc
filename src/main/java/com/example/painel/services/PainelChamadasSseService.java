@@ -50,18 +50,20 @@ public class PainelChamadasSseService {
     }
 
     private void sendEvent(SseEmitter emitter, String eventName, Object data, String id) {
-        try {
-            SseEmitter.SseEventBuilder event = SseEmitter.event()
-                    .name(eventName)
-                    .data(data);
+        synchronized (emitter) {
+            try {
+                SseEmitter.SseEventBuilder event = SseEmitter.event()
+                        .name(eventName)
+                        .data(data);
 
-            if (id != null) {
-                event.id(id);
+                if (id != null) {
+                    event.id(id);
+                }
+
+                emitter.send(event);
+            } catch (IOException | IllegalStateException ex) {
+                removeEmitterAfterSendFailure(emitter, eventName, id, ex);
             }
-
-            emitter.send(event);
-        } catch (IOException | IllegalStateException ex) {
-            removeEmitterAfterSendFailure(emitter, eventName, id, ex);
         }
     }
 
