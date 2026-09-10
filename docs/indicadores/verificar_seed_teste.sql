@@ -25,7 +25,7 @@ WHERE status = 'FINALIZADO'
   AND chegada_at BETWEEN '2026-09-01 00:00:00' AND '2026-09-03 23:59:59';
 
 -- Esperado: NAO_CLASSIFICADO=2, e os demais conforme quantos pacientes
--- de cada cor você inseriu (VERMELHO=4, LARANJA=6, AMARELO=3, VERDE=3, AZUL=2)
+-- de cada cor você inseriu (VERMELHO=4, LARANJA=7, AMARELO=3, VERDE=3, AZUL=2)
 SELECT risco, COUNT(*) AS total
 FROM paciente
 WHERE chegada_at BETWEEN '2026-09-01 00:00:00' AND '2026-09-03 23:59:59'
