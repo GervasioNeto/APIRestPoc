@@ -57,6 +57,10 @@ public class Paciente {
     @Enumerated(EnumType.STRING)
     private TipoStatus etapaDesistencia;
 
+    private Integer rechamadasTriagemCount = 0;
+
+    private Integer rechamadasConsultorioCount = 0;
+
     public Paciente() {}
 
     public Long getId() {
@@ -151,4 +155,12 @@ public class Paciente {
     public TipoStatus getEtapaDesistencia() { return etapaDesistencia; }
 
     public void setEtapaDesistencia(TipoStatus etapaDesistencia) { this.etapaDesistencia = etapaDesistencia; }
+
+    public Integer getRechamadasTriagemCount() { return rechamadasTriagemCount; }
+
+    public void setRechamadasTriagemCount(Integer rechamadasTriagemCount) { this.rechamadasTriagemCount = rechamadasTriagemCount; }
+
+    public Integer getRechamadasConsultorioCount() { return rechamadasConsultorioCount; }
+
+    public void setRechamadasConsultorioCount(Integer rechamadasConsultorioCount) { this.rechamadasConsultorioCount = rechamadasConsultorioCount; }
 }
