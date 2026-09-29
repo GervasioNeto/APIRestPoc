@@ -1,11 +1,19 @@
 package com.example.painel.entinty;
 
+import java.time.LocalDateTime;
+
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
-import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 
 @Entity
@@ -39,6 +47,19 @@ public class Paciente {
     private LocalDateTime chegadaAt;
 
     private LocalDateTime classifiedAt;
+    
+    private LocalDateTime chamadaTriagemAt;
+    
+    private LocalDateTime chamadaConsultorioAt;
+    
+    private LocalDateTime atendimentoFinalizadoAt;
+
+    @Enumerated(EnumType.STRING)
+    private TipoStatus etapaDesistencia;
+
+    private Integer rechamadasTriagemCount = 0;
+
+    private Integer rechamadasConsultorioCount = 0;
 
     public Paciente() {}
 
@@ -118,4 +139,28 @@ public class Paciente {
     public LocalDateTime getClassifiedAt() { return classifiedAt; }
 
     public void setClassifiedAt(LocalDateTime classifiedAt) { this.classifiedAt = classifiedAt; }
+
+    public LocalDateTime getChamadaTriagemAt() { return chamadaTriagemAt; }
+
+    public void setChamadaTriagemAt(LocalDateTime chamadaTriagemAt) { this.chamadaTriagemAt = chamadaTriagemAt; }
+
+    public LocalDateTime getChamadaConsultorioAt() { return chamadaConsultorioAt; }
+
+    public void setChamadaConsultorioAt(LocalDateTime chamadaConsultorioAt) { this.chamadaConsultorioAt = chamadaConsultorioAt; }
+
+    public LocalDateTime getAtendimentoFinalizadoAt() { return atendimentoFinalizadoAt; }
+
+    public void setAtendimentoFinalizadoAt(LocalDateTime atendimentoFinalizadoAt) { this.atendimentoFinalizadoAt = atendimentoFinalizadoAt; }
+
+    public TipoStatus getEtapaDesistencia() { return etapaDesistencia; }
+
+    public void setEtapaDesistencia(TipoStatus etapaDesistencia) { this.etapaDesistencia = etapaDesistencia; }
+
+    public Integer getRechamadasTriagemCount() { return rechamadasTriagemCount; }
+
+    public void setRechamadasTriagemCount(Integer rechamadasTriagemCount) { this.rechamadasTriagemCount = rechamadasTriagemCount; }
+
+    public Integer getRechamadasConsultorioCount() { return rechamadasConsultorioCount; }
+
+    public void setRechamadasConsultorioCount(Integer rechamadasConsultorioCount) { this.rechamadasConsultorioCount = rechamadasConsultorioCount; }
 }

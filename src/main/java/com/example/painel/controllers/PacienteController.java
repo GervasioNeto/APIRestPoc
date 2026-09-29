@@ -68,6 +68,11 @@ public class PacienteController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/{id}/rechamar-triagem")
+    public ResponseEntity<Paciente> rechamarTriagem(@PathVariable Long id) {
+        return ResponseEntity.ok(pacienteService.rechamarTriagem(id));
+    }
+
     @PutMapping("/{id}/rechamar")
     public ResponseEntity<Paciente> rechamar(@PathVariable Long id) {
         return ResponseEntity.ok(pacienteService.rechamarPaciente(id));
