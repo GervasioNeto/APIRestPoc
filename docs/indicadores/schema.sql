@@ -50,8 +50,7 @@ CREATE TABLE paciente (
     atendimento_finalizado_at       TIMESTAMP,   -- momento do encerramento (finalizado ou desistência)
     etapa_desistencia               VARCHAR(255), -- AGUARDANDO_TRIAGEM, AGUARDANDO_CONSULTA (só quando status = DESISTENCIA)
 
-    -- Colunas novas: contagem de rechamadas. O incremento ainda não é feito
-    -- em nenhum service (fica pendente até a rechamada de acolhimento ser feita)
+    -- Contadores incrementados pelos respectivos métodos de rechamada no service.
     rechamadas_triagem_count        INTEGER NOT NULL DEFAULT 0,  -- quantas vezes foi rechamado no acolhimento/triagem
     rechamadas_consultorio_count    INTEGER NOT NULL DEFAULT 0   -- quantas vezes foi rechamado no consultório
 );

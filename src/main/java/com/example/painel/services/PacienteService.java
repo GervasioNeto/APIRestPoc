@@ -6,8 +6,10 @@ import com.example.painel.enums.TipoStatus;
 import com.example.painel.repository.ConsultorioRepository;
 import com.example.painel.repository.PacienteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -123,6 +125,24 @@ public class PacienteService {
 
 
     @Transactional
+    public Paciente rechamarTriagem(Long id) {
+        Paciente p = buscarPorId(id);
+
+        if (p.getChamadaTriagemAt() == null || p.getStatus() != TipoStatus.CHAMADO
+                || p.getRisco() != null || p.getConsultorio() != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Paciente não está aguardando triagem após chamada");
+        }
+
+        p.setRechamadasTriagemCount(
+                (p.getRechamadasTriagemCount() == null ? 0 : p.getRechamadasTriagemCount()) + 1);
+
+        Paciente salvo = pacienteRepository.save(p);
+        chamadaPainelService.registrarChamadaTriagem(salvo);
+        return salvo;
+    }
+
+    @Transactional
     public Paciente rechamarPaciente(Long id) {
         Paciente p = buscarPorId(id);
 
@@ -133,6 +153,8 @@ public class PacienteService {
         // NÃO remove da consulta
         // Apenas dispara novo chamado
         p.setStatus(TipoStatus.CHAMADO);
+        p.setRechamadasConsultorioCount(
+                (p.getRechamadasConsultorioCount() == null ? 0 : p.getRechamadasConsultorioCount()) + 1);
 
         Paciente salvo = pacienteRepository.save(p);
         chamadaPainelService.registrarChamadaConsultorio(salvo, salvo.getConsultorio());
