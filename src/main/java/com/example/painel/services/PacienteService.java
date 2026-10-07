@@ -80,7 +80,10 @@ public class PacienteService {
         Paciente p = buscarPorId(id);
 
         p.setStatus(TipoStatus.CHAMADO);
-        p.setChamadaTriagemAt(LocalDateTime.now());
+
+        if (p.getChamadaTriagemAt() == null) {
+            p.setChamadaTriagemAt(LocalDateTime.now());
+        }
 
         Paciente salvo = pacienteRepository.save(p);
         chamadaPainelService.registrarChamadaTriagem(salvo);
@@ -96,7 +99,10 @@ public class PacienteService {
 
         p.setConsultorio(c);
         p.setStatus(TipoStatus.CHAMADO);
-        p.setChamadaConsultorioAt(LocalDateTime.now());
+
+        if (p.getChamadaConsultorioAt() == null) {
+            p.setChamadaConsultorioAt(LocalDateTime.now());
+        }
 
         Paciente salvo = pacienteRepository.save(p);
         chamadaPainelService.registrarChamadaConsultorio(salvo, c);
