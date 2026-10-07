@@ -96,6 +96,17 @@
 					</excludes>
 				</configuration>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!-- Contorna incompatibilidade do Testcontainers com versoes recentes do Docker Engine,
+					     que removeram suporte a versoes antigas da API (ver testcontainers/testcontainers-java#8253) -->
+					<systemPropertyVariables>
+						<api.version>1.51</api.version>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 

@@ -3,6 +3,7 @@ package com.example.painel.services;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
 import com.example.painel.enums.TipoStatus;
+import com.example.painel.repository.ConsultorioRepository;
 import com.example.painel.repository.PacienteRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,10 +25,76 @@ class PacienteServiceTests {
     private PacienteRepository pacienteRepository;
 
     @Mock
+    private ConsultorioRepository consultorioRepository;
+
+    @Mock
     private ChamadaPainelService chamadaPainelService;
 
     @InjectMocks
     private PacienteService pacienteService;
+
+    @Test
+    void primeiraChamadaParaTriagemRegistraHorario() {
+        Paciente paciente = new Paciente();
+        when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
+        when(pacienteRepository.save(paciente)).thenReturn(paciente);
+
+        pacienteService.chamarParaTriagem(1L);
+
+        assertThat(paciente.getChamadaTriagemAt()).isNotNull();
+        assertThat(paciente.getStatus()).isEqualTo(TipoStatus.CHAMADO);
+        verify(chamadaPainelService).registrarChamadaTriagem(paciente);
+    }
+
+    @Test
+    void chamarParaTriagemNovamentePreservaHorarioDaPrimeiraChamada() {
+        Paciente paciente = new Paciente();
+        LocalDateTime primeiraChamada = LocalDateTime.of(2026, 9, 29, 10, 0);
+        paciente.setChamadaTriagemAt(primeiraChamada);
+        when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
+        when(pacienteRepository.save(paciente)).thenReturn(paciente);
+
+        pacienteService.chamarParaTriagem(1L);
+        pacienteService.chamarParaTriagem(1L);
+
+        assertThat(paciente.getChamadaTriagemAt()).isEqualTo(primeiraChamada);
+        verify(pacienteRepository, times(2)).save(paciente);
+        verify(chamadaPainelService, times(2)).registrarChamadaTriagem(paciente);
+    }
+
+    @Test
+    void primeiraChamadaParaConsultorioRegistraHorario() {
+        Paciente paciente = new Paciente();
+        Consultorio consultorio = new Consultorio();
+        when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
+        when(consultorioRepository.findById(2L)).thenReturn(Optional.of(consultorio));
+        when(pacienteRepository.save(paciente)).thenReturn(paciente);
+
+        pacienteService.chamarParaConsultorio(1L, 2L);
+
+        assertThat(paciente.getChamadaConsultorioAt()).isNotNull();
+        assertThat(paciente.getConsultorio()).isSameAs(consultorio);
+        assertThat(paciente.getStatus()).isEqualTo(TipoStatus.CHAMADO);
+        verify(chamadaPainelService).registrarChamadaConsultorio(paciente, consultorio);
+    }
+
+    @Test
+    void chamarParaConsultorioNovamentePreservaHorarioDaPrimeiraChamada() {
+        Paciente paciente = new Paciente();
+        Consultorio consultorio = new Consultorio();
+        LocalDateTime primeiraChamada = LocalDateTime.of(2026, 9, 29, 10, 0);
+        paciente.setChamadaConsultorioAt(primeiraChamada);
+        when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
+        when(consultorioRepository.findById(2L)).thenReturn(Optional.of(consultorio));
+        when(pacienteRepository.save(paciente)).thenReturn(paciente);
+
+        pacienteService.chamarParaConsultorio(1L, 2L);
+        pacienteService.chamarParaConsultorio(1L, 2L);
+
+        assertThat(paciente.getChamadaConsultorioAt()).isEqualTo(primeiraChamada);
+        verify(pacienteRepository, times(2)).save(paciente);
+        verify(chamadaPainelService, times(2)).registrarChamadaConsultorio(paciente, consultorio);
+    }
 
     @Test
     void rechamadasDeTriagemIncrementamSomenteSeuContadorEPreservamHorarioInicial() {
