@@ -1,5 +1,6 @@
 package com.example.painel.controllers;
 
+import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.Paciente;
 import com.example.painel.enums.TipoStatus;
 import com.example.painel.repository.PacienteRepository;
@@ -12,9 +13,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -71,6 +74,36 @@ class PacienteControllerTests {
         mvc.perform(put("/pacientes/1/rechamar-triagem"))
                 .andExpect(status().isConflict());
         verify(repository, never()).save(any());
+        verifyNoInteractions(painel);
+    }
+
+    @Test
+    void historicoDeChamadasRetornaTriagemEConsultorioEmOrdemCronologica() throws Exception {
+        when(repository.existsById(1L)).thenReturn(true);
+        when(painel.listarHistoricoDoPaciente(1L)).thenReturn(List.of(
+                new HistoricoChamadaResponse("TRIAGEM", "Triagem", LocalDateTime.of(2026, 9, 29, 10, 0)),
+                new HistoricoChamadaResponse("CONSULTORIO", "Consultorio 2", LocalDateTime.of(2026, 9, 29, 10, 20)),
+                new HistoricoChamadaResponse("CONSULTORIO", "Consultorio 2", LocalDateTime.of(2026, 9, 29, 10, 25)),
+                new HistoricoChamadaResponse("CONSULTORIO", "Consultorio 2", LocalDateTime.of(2026, 9, 29, 10, 30))));
+
+        mvc.perform(get("/pacientes/1/chamadas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[0].tipo").value("TRIAGEM"))
+                .andExpect(jsonPath("$[0].destino").value("Triagem"))
+                .andExpect(jsonPath("$[0].criadaEm").exists())
+                .andExpect(jsonPath("$[1].tipo").value("CONSULTORIO"))
+                .andExpect(jsonPath("$[3].destino").value("Consultorio 2"))
+                .andExpect(jsonPath("$[0].nomePaciente").doesNotExist());
+        verify(painel).listarHistoricoDoPaciente(1L);
+    }
+
+    @Test
+    void historicoDePacienteInexistenteRetorna404() throws Exception {
+        when(repository.existsById(99L)).thenReturn(false);
+
+        mvc.perform(get("/pacientes/99/chamadas"))
+                .andExpect(status().isNotFound());
         verifyNoInteractions(painel);
     }
 }
