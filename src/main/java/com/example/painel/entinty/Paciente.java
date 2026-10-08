@@ -14,6 +14,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Transient;
 
 
 @Entity
@@ -60,6 +61,10 @@ public class Paciente {
     private Integer rechamadasTriagemCount = 0;
 
     private Integer rechamadasConsultorioCount = 0;
+
+    // Calculado na fila do médico (classifiedAt + protocolo_tempo); não é persistido.
+    @Transient
+    private LocalDateTime prazoAtendimentoAt;
 
     public Paciente() {}
 
@@ -163,4 +168,8 @@ public class Paciente {
     public Integer getRechamadasConsultorioCount() { return rechamadasConsultorioCount; }
 
     public void setRechamadasConsultorioCount(Integer rechamadasConsultorioCount) { this.rechamadasConsultorioCount = rechamadasConsultorioCount; }
+
+    public LocalDateTime getPrazoAtendimentoAt() { return prazoAtendimentoAt; }
+
+    public void setPrazoAtendimentoAt(LocalDateTime prazoAtendimentoAt) { this.prazoAtendimentoAt = prazoAtendimentoAt; }
 }
