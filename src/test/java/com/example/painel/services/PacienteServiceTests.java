@@ -273,4 +273,36 @@ class PacienteServiceTests {
         protocolo.setTempoMaximoMinutos(minutos);
         return protocolo;
     }
+
+    @Test
+    void finalizarAtendimentoAnonimizaPacienteESuasChamadasNoPainel() {
+        Paciente paciente = new Paciente();
+        paciente.setId(1L);
+        paciente.setNome("Maria Silva");
+        when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
+
+        pacienteService.finalizarAtendimento(1L);
+
+        assertThat(paciente.getStatus()).isEqualTo(TipoStatus.FINALIZADO);
+        assertThat(paciente.getNome()).isEqualTo("Paciente Anônimo");
+        verify(pacienteRepository).save(paciente);
+        verify(chamadaPainelService).anonimizarChamadasDoPaciente(1L, "Paciente Anônimo");
+    }
+
+    @Test
+    void registrarDesistenciaAnonimizaPacienteESuasChamadasNoPainel() {
+        Paciente paciente = new Paciente();
+        paciente.setId(1L);
+        paciente.setNome("Maria Silva");
+        paciente.setStatus(TipoStatus.AGUARDANDO_CONSULTA);
+        when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
+
+        pacienteService.registrarDesistencia(1L);
+
+        assertThat(paciente.getStatus()).isEqualTo(TipoStatus.DESISTENCIA);
+        assertThat(paciente.getEtapaDesistencia()).isEqualTo(TipoStatus.AGUARDANDO_CONSULTA);
+        assertThat(paciente.getNome()).isEqualTo("Paciente Anônimo");
+        verify(pacienteRepository).save(paciente);
+        verify(chamadaPainelService).anonimizarChamadasDoPaciente(1L, "Paciente Anônimo");
+    }
 }
