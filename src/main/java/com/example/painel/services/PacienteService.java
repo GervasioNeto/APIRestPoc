@@ -1,5 +1,6 @@
 package com.example.painel.services;
 
+import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
 import com.example.painel.enums.TipoStatus;
@@ -168,6 +169,15 @@ public class PacienteService {
         return salvo;
     }
 
+
+    public List<HistoricoChamadaResponse> listarHistoricoChamadas(Long id) {
+        if (!pacienteRepository.existsById(id)) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND, "Paciente não encontrado com o ID: " + id);
+        }
+
+        return chamadaPainelService.listarHistoricoDoPaciente(id);
+    }
 
     @Transactional
     public Paciente recolocarNaFila(Long id) {

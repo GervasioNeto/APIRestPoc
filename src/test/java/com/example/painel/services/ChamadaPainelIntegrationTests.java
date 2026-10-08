@@ -1,6 +1,7 @@
 package com.example.painel.services;
 
 import com.example.painel.dto.ChamadaPainelResponse;
+import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.ChamadaPainel;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
@@ -116,6 +117,32 @@ class ChamadaPainelIntegrationTests {
 
         assertThat(recentes).extracting(ChamadaPainelResponse::patientName)
                 .containsExactly("Segunda", "Primeira");
+    }
+
+    @Test
+    void historicoDoPacienteRetornaUmaTriagemETresConsultoriosEmOrdemCronologica() {
+        Paciente paciente = criarPaciente("Carla Mendes");
+        Paciente outro = criarPaciente("Outro Paciente");
+        Consultorio consultorio = criarConsultorio(4L);
+
+        pacienteService.chamarParaTriagem(paciente.getId());
+        pacienteService.chamarParaTriagem(outro.getId());
+        Paciente dados = new Paciente();
+        dados.setRisco(Risco.AMARELO);
+        dados.setTipo(TipoAtendimento.PSIQUIATRICO);
+        pacienteService.classificar(paciente.getId(), dados);
+        pacienteService.chamarParaConsultorio(paciente.getId(), consultorio.getId());
+        pacienteService.rechamarPaciente(paciente.getId());
+        pacienteService.rechamarPaciente(paciente.getId());
+
+        List<HistoricoChamadaResponse> historico = pacienteService.listarHistoricoChamadas(paciente.getId());
+
+        assertThat(historico).extracting(HistoricoChamadaResponse::tipo)
+                .containsExactly("TRIAGEM", "CONSULTORIO", "CONSULTORIO", "CONSULTORIO");
+        assertThat(historico).extracting(HistoricoChamadaResponse::destino)
+                .containsExactly("Triagem", "Consultorio 4", "Consultorio 4", "Consultorio 4");
+        assertThat(historico).extracting(HistoricoChamadaResponse::criadaEm)
+                .isSortedAccordingTo(java.util.Comparator.naturalOrder());
     }
 
     private Paciente criarPaciente(String nome) {
