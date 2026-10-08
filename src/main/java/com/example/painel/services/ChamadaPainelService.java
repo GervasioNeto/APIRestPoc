@@ -1,6 +1,7 @@
 package com.example.painel.services;
 
 import com.example.painel.dto.ChamadaPainelResponse;
+import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.ChamadaPainel;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
@@ -50,6 +51,17 @@ public class ChamadaPainelService {
         return chamadaPainelRepository.findTop10ByOrderByCriadaEmDescIdDesc()
                 .stream()
                 .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<HistoricoChamadaResponse> listarHistoricoDoPaciente(Long pacienteId) {
+        return chamadaPainelRepository.findByPacienteIdOrderByCriadaEmAsc(pacienteId)
+                .stream()
+                .map(chamada -> new HistoricoChamadaResponse(
+                        chamada.getTipo() == null ? null : chamada.getTipo().name(),
+                        chamada.getDestino(),
+                        chamada.getCriadaEm()))
                 .toList();
     }
 
