@@ -2,9 +2,13 @@ package com.example.painel.services;
 
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
+import com.example.painel.entinty.ProtocoloTempo;
+import com.example.painel.enums.Risco;
+import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
 import com.example.painel.repository.ConsultorioRepository;
 import com.example.painel.repository.PacienteRepository;
+import com.example.painel.repository.ProtocoloTempoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -12,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +34,9 @@ class PacienteServiceTests {
 
     @Mock
     private ChamadaPainelService chamadaPainelService;
+
+    @Mock
+    private ProtocoloTempoRepository protocoloTempoRepository;
 
     @InjectMocks
     private PacienteService pacienteService;
@@ -201,5 +209,68 @@ class PacienteServiceTests {
         assertThat(paciente.getRechamadasConsultorioCount()).isZero();
         verify(pacienteRepository, never()).save(any());
         verifyNoInteractions(chamadaPainelService);
+    }
+
+    @Test
+    void filaMedicaCalculaPrazoPeloProtocoloCarregandoProtocoloUmaVez() {
+        Paciente laranjaClinico = pacienteClassificado(Risco.LARANJA, TipoAtendimento.CLINICO,
+                LocalDateTime.of(2026, 9, 29, 10, 0));
+        Paciente amareloPsiquiatrico = pacienteClassificado(Risco.AMARELO, TipoAtendimento.PSIQUIATRICO,
+                LocalDateTime.of(2026, 9, 29, 10, 5));
+        Paciente semProtocolo = pacienteClassificado(Risco.VERDE, TipoAtendimento.CLINICO,
+                LocalDateTime.of(2026, 9, 29, 10, 10));
+        when(pacienteRepository.buscarFilaDeEsperaOrdenada())
+                .thenReturn(List.of(laranjaClinico, amareloPsiquiatrico, semProtocolo));
+        when(protocoloTempoRepository.findAll()).thenReturn(List.of(
+                protocolo(Risco.LARANJA, TipoAtendimento.CLINICO, 10),
+                protocolo(Risco.AMARELO, TipoAtendimento.PSIQUIATRICO, 60)));
+
+        List<Paciente> fila = pacienteService.listarFilaMedica();
+
+        assertThat(fila).containsExactly(laranjaClinico, amareloPsiquiatrico, semProtocolo);
+        assertThat(laranjaClinico.getPrazoAtendimentoAt()).isEqualTo(LocalDateTime.of(2026, 9, 29, 10, 10));
+        assertThat(amareloPsiquiatrico.getPrazoAtendimentoAt()).isEqualTo(LocalDateTime.of(2026, 9, 29, 11, 5));
+        assertThat(semProtocolo.getPrazoAtendimentoAt()).isNull();
+        verify(protocoloTempoRepository, times(1)).findAll();
+        verify(protocoloTempoRepository, never()).findByRiscoAndTipo(any(), any());
+    }
+
+    @Test
+    void filaMedicaSemClassificacaoOuTipoRetornaPrazoNulo() {
+        Paciente semClassifiedAt = pacienteClassificado(Risco.LARANJA, TipoAtendimento.CLINICO, null);
+        Paciente semTipo = pacienteClassificado(Risco.LARANJA, null, LocalDateTime.of(2026, 9, 29, 10, 0));
+        when(pacienteRepository.buscarFilaDeEsperaOrdenada()).thenReturn(List.of(semClassifiedAt, semTipo));
+        when(protocoloTempoRepository.findAll()).thenReturn(List.of(
+                protocolo(Risco.LARANJA, TipoAtendimento.CLINICO, 10)));
+
+        pacienteService.listarFilaMedica();
+
+        assertThat(semClassifiedAt.getPrazoAtendimentoAt()).isNull();
+        assertThat(semTipo.getPrazoAtendimentoAt()).isNull();
+    }
+
+    @Test
+    void filaMedicaVaziaNaoConsultaProtocolo() {
+        when(pacienteRepository.buscarFilaDeEsperaOrdenada()).thenReturn(List.of());
+
+        assertThat(pacienteService.listarFilaMedica()).isEmpty();
+        verifyNoInteractions(protocoloTempoRepository);
+    }
+
+    private Paciente pacienteClassificado(Risco risco, TipoAtendimento tipo, LocalDateTime classifiedAt) {
+        Paciente paciente = new Paciente();
+        paciente.setStatus(TipoStatus.AGUARDANDO_CONSULTA);
+        paciente.setRisco(risco);
+        paciente.setTipo(tipo);
+        paciente.setClassifiedAt(classifiedAt);
+        return paciente;
+    }
+
+    private ProtocoloTempo protocolo(Risco risco, TipoAtendimento tipo, int minutos) {
+        ProtocoloTempo protocolo = new ProtocoloTempo();
+        protocolo.setRisco(risco);
+        protocolo.setTipo(tipo);
+        protocolo.setTempoMaximoMinutos(minutos);
+        return protocolo;
     }
 }

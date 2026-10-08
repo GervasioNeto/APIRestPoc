@@ -3,9 +3,13 @@ package com.example.painel.services;
 import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
+import com.example.painel.entinty.ProtocoloTempo;
+import com.example.painel.enums.Risco;
+import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
 import com.example.painel.repository.ConsultorioRepository;
 import com.example.painel.repository.PacienteRepository;
+import com.example.painel.repository.ProtocoloTempoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +32,9 @@ public class PacienteService {
 
     @Autowired
     private ChamadaPainelService chamadaPainelService;
+
+    @Autowired
+    private ProtocoloTempoRepository protocoloTempoRepository;
 
     // CRUD Básico
     public List<Paciente> listarTodos() {
@@ -73,8 +81,38 @@ public class PacienteService {
     }
 
     public List<Paciente> listarFilaMedica() {
-        return pacienteRepository.buscarFilaDeEsperaOrdenada();
+        List<Paciente> fila = pacienteRepository.buscarFilaDeEsperaOrdenada();
+        if (fila.isEmpty()) {
+            return fila;
+        }
+
+        // Carrega o protocolo uma vez por requisição (evita N+1)
+        Map<ChaveProtocolo, Integer> tempoMaximoPorRiscoETipo = protocoloTempoRepository.findAll().stream()
+                .filter(pt -> pt.getTempoMaximoMinutos() != null)
+                .collect(Collectors.toMap(
+                        pt -> new ChaveProtocolo(pt.getRisco(), pt.getTipo()),
+                        ProtocoloTempo::getTempoMaximoMinutos,
+                        (primeiro, segundo) -> primeiro));
+
+        fila.forEach(p -> p.setPrazoAtendimentoAt(calcularPrazoAtendimento(p, tempoMaximoPorRiscoETipo)));
+        return fila;
     }
+
+    // Só informa o prazo; a comparação com o horário atual (atraso) fica no front
+    private LocalDateTime calcularPrazoAtendimento(Paciente p, Map<ChaveProtocolo, Integer> tempoMaximoPorRiscoETipo) {
+        if (p.getClassifiedAt() == null) {
+            return null;
+        }
+
+        Integer tempoMaximo = tempoMaximoPorRiscoETipo.get(new ChaveProtocolo(p.getRisco(), p.getTipo()));
+        if (tempoMaximo == null) {
+            return null;
+        }
+
+        return p.getClassifiedAt().plusMinutes(tempoMaximo);
+    }
+
+    private record ChaveProtocolo(Risco risco, TipoAtendimento tipo) {}
 
     @Transactional
     public Paciente chamarParaTriagem(Long id) {
