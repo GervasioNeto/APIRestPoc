@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 @Service
 public class PacienteService {
 
+    private static final String NOME_ANONIMO = "Paciente Anônimo";
+
     @Autowired
     private PacienteRepository pacienteRepository;
 
@@ -156,6 +158,7 @@ public class PacienteService {
         p.setAtendimentoFinalizadoAt(LocalDateTime.now());
         anonimizar(p);
         pacienteRepository.save(p);
+        chamadaPainelService.anonimizarChamadasDoPaciente(p.getId(), NOME_ANONIMO);
     }
 
     @Transactional
@@ -166,6 +169,7 @@ public class PacienteService {
         p.setAtendimentoFinalizadoAt(LocalDateTime.now());
         anonimizar(p);
         pacienteRepository.save(p);
+        chamadaPainelService.anonimizarChamadasDoPaciente(p.getId(), NOME_ANONIMO);
     }
 
 
@@ -228,7 +232,7 @@ public class PacienteService {
     }
 
     private void anonimizar(Paciente p) {
-        p.setNome("Paciente Anônimo");
+        p.setNome(NOME_ANONIMO);
         p.setCpf("000.000.000-00");
         p.setTriageNotes(null);
     }

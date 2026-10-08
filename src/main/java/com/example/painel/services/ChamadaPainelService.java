@@ -65,6 +65,11 @@ public class ChamadaPainelService {
                 .toList();
     }
 
+    @Transactional
+    public void anonimizarChamadasDoPaciente(Long pacienteId, String nomeAnonimo) {
+        chamadaPainelRepository.anonimizarNomePorPacienteId(pacienteId, nomeAnonimo);
+    }
+
     private ChamadaPainel novaChamadaBase(Paciente paciente, TipoChamadaPainel tipo) {
         ChamadaPainel chamada = new ChamadaPainel();
         chamada.setPacienteId(paciente.getId());
