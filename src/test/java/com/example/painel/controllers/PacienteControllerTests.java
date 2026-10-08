@@ -2,8 +2,12 @@ package com.example.painel.controllers;
 
 import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.Paciente;
+import com.example.painel.entinty.ProtocoloTempo;
+import com.example.painel.enums.Risco;
+import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
 import com.example.painel.repository.PacienteRepository;
+import com.example.painel.repository.ProtocoloTempoRepository;
 import com.example.painel.services.ChamadaPainelService;
 import com.example.painel.services.PacienteService;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PacienteControllerTests {
     private PacienteRepository repository;
     private ChamadaPainelService painel;
+    private ProtocoloTempoRepository protocoloTempoRepository;
     private MockMvc mvc;
     private Paciente paciente;
 
@@ -31,9 +36,11 @@ class PacienteControllerTests {
     void setup() {
         repository = mock(PacienteRepository.class);
         painel = mock(ChamadaPainelService.class);
+        protocoloTempoRepository = mock(ProtocoloTempoRepository.class);
         PacienteService service = new PacienteService();
         ReflectionTestUtils.setField(service, "pacienteRepository", repository);
         ReflectionTestUtils.setField(service, "chamadaPainelService", painel);
+        ReflectionTestUtils.setField(service, "protocoloTempoRepository", protocoloTempoRepository);
         PacienteController controller = new PacienteController();
         ReflectionTestUtils.setField(controller, "pacienteService", service);
         mvc = MockMvcBuilders.standaloneSetup(controller).build();
@@ -105,5 +112,35 @@ class PacienteControllerTests {
         mvc.perform(get("/pacientes/99/chamadas"))
                 .andExpect(status().isNotFound());
         verifyNoInteractions(painel);
+    }
+
+    @Test
+    void filaMedicaRetornaPrazoAtendimentoOuNullSemProtocolo() throws Exception {
+        Paciente laranja = new Paciente();
+        laranja.setId(2L);
+        laranja.setRisco(Risco.LARANJA);
+        laranja.setTipo(TipoAtendimento.CLINICO);
+        laranja.setClassifiedAt(LocalDateTime.of(2026, 9, 29, 10, 0));
+        Paciente verde = new Paciente();
+        verde.setId(3L);
+        verde.setRisco(Risco.VERDE);
+        verde.setTipo(TipoAtendimento.CLINICO);
+        verde.setClassifiedAt(LocalDateTime.of(2026, 9, 29, 10, 0));
+        ProtocoloTempo protocolo = new ProtocoloTempo();
+        protocolo.setRisco(Risco.LARANJA);
+        protocolo.setTipo(TipoAtendimento.CLINICO);
+        protocolo.setTempoMaximoMinutos(10);
+        when(repository.buscarFilaDeEsperaOrdenada()).thenReturn(List.of(laranja, verde));
+        when(protocoloTempoRepository.findAll()).thenReturn(List.of(protocolo));
+
+        mvc.perform(get("/pacientes/aguardando-medico"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(2))
+                // standaloneSetup usa o ObjectMapper padrão (LocalDateTime como array); na aplicação sai em ISO
+                .andExpect(jsonPath("$[0].prazoAtendimentoAt").value(org.hamcrest.Matchers.contains(2026, 9, 29, 10, 10)))
+                .andExpect(jsonPath("$[1].id").value(3))
+                .andExpect(jsonPath("$[1]").value(org.hamcrest.Matchers.hasKey("prazoAtendimentoAt")))
+                .andExpect(jsonPath("$[1].prazoAtendimentoAt").value(org.hamcrest.Matchers.nullValue()));
+        verify(protocoloTempoRepository, times(1)).findAll();
     }
 }
