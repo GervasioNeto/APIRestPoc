@@ -10,4 +10,6 @@ import java.util.List;
 public interface ChamadaPainelRepository extends JpaRepository<ChamadaPainel, Long> {
 
     List<ChamadaPainel> findTop10ByOrderByCriadaEmDescIdDesc();
+
+    List<ChamadaPainel> findByPacienteIdOrderByCriadaEmAsc(Long pacienteId);
 }

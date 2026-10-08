@@ -72,6 +72,10 @@ CREATE TABLE chamada_painel (
     criada_em             TIMESTAMP
 );
 
+-- Histórico de chamadas por paciente (GET /pacientes/{id}/chamadas).
+-- Em bancos já criados, rodar esta linha manualmente.
+CREATE INDEX idx_chamada_painel_paciente_tipo ON chamada_painel (paciente_id, tipo);
+
 -- Tabela de referência (nova): tempo máximo (protocolo) por risco/tipo.
 -- Usada só pelos indicadores de "% de atendimento fora do tempo de protocolo".
 -- Precisa ser populada manualmente com os tempos definidos pelo hospital.
