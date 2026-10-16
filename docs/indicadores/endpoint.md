@@ -1,6 +1,6 @@
 # GET /indicadores
 
-Consulta indicadores por período de chegada e escopo, sem dados pessoais.
+documentação de como consultar e interpretar o GET /indicadores
 
 ## Parâmetros
 
@@ -83,5 +83,14 @@ PostgreSQL isolado via Testcontainers, service real e endpoint via MockMvc.
 
 O frontend possui uma tela provisória para visualizar dados e validar estados,
 utilizando componentes existentes do site. Não corresponde ao design oficial.
-A ativação dos escopos, recaptura dos mocks reais e validação final do frontend
-ainda precisam ser feitas contra esta versão do backend.
+A integração do frontend foi concluída na branch
+`feat/indicadores-dados-cards-provisorios` (commit `7f7dfc4`): hook ativo nos dois
+escopos, mocks reais GERAL e SAMU capturados e commitados, datas locais sem UTC,
+cards e estados de carregamento/erro/vazio. Foram aprovados 25 testes da feature
+(17 locais, 7 HTTP reais com servidor ativo e 1 com servidor desligado), além
+do build e lint dos arquivos da feature.
+
+A tela continua provisória, usando componentes existentes. A integração com a
+estrutura mais recente da develop do frontend e a adequação ao design oficial
+continuam pendentes. Desistências, indicadores 1-3 e ocultação de cards SAMU
+(IND-10) não foram implementados nesta entrega.
