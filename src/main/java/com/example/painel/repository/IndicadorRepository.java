@@ -13,22 +13,26 @@ import java.util.List;
 @Repository
 public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
 
+    // GERAL inclui tipo nulo: SQL "tipo <> SAMU" sozinho excluiria esses pacientes.
+    String FILTRO_ESCOPO = " AND ((:samu = true AND p.tipo = 'SAMU') " +
+            "OR (:samu = false AND (p.tipo IS NULL OR p.tipo <> 'SAMU'))) ";
+
     // ---- Grupo 1: contagens simples (indicadores 4-13) ----
 
-    @Query("SELECT COUNT(p) FROM Paciente p WHERE p.chegadaAt BETWEEN :inicio AND :fim")
-    long countCadastrados(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+    @Query("SELECT COUNT(p) FROM Paciente p WHERE p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO)
+    long countCadastrados(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
 
     @Query("SELECT COUNT(p) FROM Paciente p " +
-            "WHERE p.classifiedAt IS NOT NULL AND p.chegadaAt BETWEEN :inicio AND :fim")
-    long countClassificados(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+            "WHERE p.classifiedAt IS NOT NULL AND p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO)
+    long countClassificados(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
 
     @Query("SELECT COUNT(p) FROM Paciente p " +
-            "WHERE p.status = 'FINALIZADO' AND p.chegadaAt BETWEEN :inicio AND :fim")
-    long countAtendidos(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+            "WHERE p.status = 'FINALIZADO' AND p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO)
+    long countAtendidos(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
 
     @Query("SELECT p.risco AS risco, COUNT(p) AS total FROM Paciente p " +
-            "WHERE p.chegadaAt BETWEEN :inicio AND :fim GROUP BY p.risco")
-    List<RiscoContagem> contarPorRisco(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+            "WHERE p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO + "GROUP BY p.risco")
+    List<RiscoContagem> contarPorRisco(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
 
     // ---- Grupo 2: tempo médio de espera por risco/tipo (indicadores 14-20) ----
 
@@ -39,8 +43,10 @@ public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
             "WHERE classified_at IS NOT NULL " +
             "  AND chamada_consultorio_at IS NOT NULL " +
             "  AND chegada_at BETWEEN :inicio AND :fim " +
+            "  AND ((:samu = true AND tipo = 'SAMU') " +
+            "    OR (:samu = false AND (tipo IS NULL OR tipo <> 'SAMU'))) " +
             "GROUP BY risco, tipo")
-    List<TempoMedioPorRiscoTipo> tempoMedioEsperaPorRiscoETipo(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+    List<TempoMedioPorRiscoTipo> tempoMedioEsperaPorRiscoETipo(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
 
     // ---- Grupo 3: % fora do tempo de protocolo por risco/tipo (indicadores 21-27) ----
 
@@ -52,9 +58,9 @@ public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
             "JOIN protocolo_tempo pt ON pt.risco = p.risco AND pt.tipo = p.tipo " +
             "WHERE p.classified_at IS NOT NULL " +
             "  AND p.chamada_consultorio_at IS NOT NULL " +
-            "  AND p.chegada_at BETWEEN :inicio AND :fim " +
+            "  AND p.chegada_at BETWEEN :inicio AND :fim " + FILTRO_ESCOPO +
             "GROUP BY p.risco, p.tipo")
-    List<ForaDoProtocoloPorRiscoTipo> contarForaDoProtocoloPorRiscoETipo(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim);
+    List<ForaDoProtocoloPorRiscoTipo> contarForaDoProtocoloPorRiscoETipo(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
 
     // ---- Projections ----
 

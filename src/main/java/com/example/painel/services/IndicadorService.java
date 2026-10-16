@@ -3,6 +3,7 @@ package com.example.painel.services;
 import com.example.painel.dto.IndicadoresResponse;
 import com.example.painel.dto.IndicadoresResponse.Detalhamento;
 import com.example.painel.enums.Risco;
+import com.example.painel.enums.EscopoIndicadores;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.repository.IndicadorRepository;
 import org.springframework.stereotype.Service;
@@ -24,22 +25,30 @@ public class IndicadorService {
      * Filtra chegadaAt entre inicio e fim, ambos inclusivos, sem offset ou
      * período padrão. Datas iguais são válidas. Preserva os filtros individuais
      * de status do repository; não aplica filtro global de atendimentos encerrados.
+     * Sem escopo explícito, consulta GERAL (exclui SAMU, inclui tipo nulo).
      */
     @Transactional(readOnly = true)
     public IndicadoresResponse consultarIndicadores(LocalDateTime inicio, LocalDateTime fim) {
+        return consultarIndicadores(inicio, fim, EscopoIndicadores.GERAL);
+    }
+
+    @Transactional(readOnly = true)
+    public IndicadoresResponse consultarIndicadores(LocalDateTime inicio, LocalDateTime fim, EscopoIndicadores escopo) {
+        if (escopo == null) throw new IllegalArgumentException("escopo é obrigatório");
+        boolean samu = escopo == EscopoIndicadores.SAMU;
         if (inicio == null || fim == null || inicio.isAfter(fim)) {
             throw new PeriodoInvalidoException();
         }
-        long cadastrados = repository.countCadastrados(inicio, fim);
-        long classificados = repository.countClassificados(inicio, fim);
-        long atendidos = repository.countAtendidos(inicio, fim);
+        long cadastrados = repository.countCadastrados(inicio, fim, samu);
+        long classificados = repository.countClassificados(inicio, fim, samu);
+        long atendidos = repository.countAtendidos(inicio, fim, samu);
         Map<Risco, Long> contagens = new EnumMap<>(Risco.class);
         for (Risco risco : Risco.values()) contagens.put(risco, 0L);
-        for (var grupo : repository.contarPorRisco(inicio, fim)) {
+        for (var grupo : repository.contarPorRisco(inicio, fim, samu)) {
             if (grupo.getRisco() != null) contagens.put(grupo.getRisco(), zero(grupo.getTotal()));
         }
-        var medias = repository.tempoMedioEsperaPorRiscoETipo(inicio, fim);
-        var protocolos = repository.contarForaDoProtocoloPorRiscoETipo(inicio, fim);
+        var medias = repository.tempoMedioEsperaPorRiscoETipo(inicio, fim, samu);
+        var protocolos = repository.contarForaDoProtocoloPorRiscoETipo(inicio, fim, samu);
         List<Detalhamento> detalhes = new ArrayList<>();
         for (Risco risco : Risco.values()) {
             if (risco == Risco.NAO_CLASSIFICADO) continue;

@@ -23,7 +23,7 @@ class IndicadorControllerTests {
         mvc = MockMvcBuilders.standaloneSetup(new IndicadorController(service)).build();
     }
     @Test void consultaValida() throws Exception {
-        when(service.consultarIndicadores(any(), any())).thenReturn(new IndicadoresResponse(
+        when(service.consultarIndicadores(any(), any(), any())).thenReturn(new IndicadoresResponse(
                 4, 3, 2, new BigDecimal("75.00"), new BigDecimal("50.00"),
                 Map.of(com.example.painel.enums.Risco.LARANJA, 3L), List.of(
                         new IndicadoresResponse.Detalhamento(com.example.painel.enums.Risco.LARANJA,
@@ -37,7 +37,7 @@ class IndicadorControllerTests {
                 .andExpect(jsonPath("$.porRiscoETipo[0].tipo").value("CLINICO"))
                 .andExpect(jsonPath("$.porRiscoETipo[0].tempoMedioEsperaMinutos").value(12.5))
                 .andExpect(jsonPath("$.porRiscoETipo[0].percentualForaDoPrazo").value(50.0));
-        verify(service).consultarIndicadores(java.time.LocalDateTime.parse(inicio), java.time.LocalDateTime.parse(fim));
+        verify(service).consultarIndicadores(java.time.LocalDateTime.parse(inicio), java.time.LocalDateTime.parse(fim), com.example.painel.enums.EscopoIndicadores.GERAL);
     }
     @Test void parametrosInvalidos() throws Exception {
         mvc.perform(get("/indicadores")).andExpect(status().isBadRequest());
@@ -45,14 +45,16 @@ class IndicadorControllerTests {
         mvc.perform(get("/indicadores").param("fim", fim)).andExpect(status().isBadRequest());
         mvc.perform(get("/indicadores").param("inicio", "invalido").param("fim", fim)).andExpect(status().isBadRequest());
         mvc.perform(get("/indicadores").param("inicio", inicio).param("fim", "2026-02-30T00:00:00")).andExpect(status().isBadRequest());
+        mvc.perform(get("/indicadores").param("inicio", inicio).param("fim", fim).param("escopo", "OUTRO"))
+                .andExpect(status().isBadRequest());
         verifyNoInteractions(service);
     }
     @Test void periodoInvertido() throws Exception {
-        when(service.consultarIndicadores(any(), any())).thenThrow(new IndicadorService.PeriodoInvalidoException());
+        when(service.consultarIndicadores(any(), any(), any())).thenThrow(new IndicadorService.PeriodoInvalidoException());
         mvc.perform(get("/indicadores").param("inicio", fim).param("fim", inicio)).andExpect(status().isBadRequest());
     }
     @Test void periodoVazioEDatasIguais() throws Exception {
-        when(service.consultarIndicadores(any(), any())).thenReturn(new IndicadoresResponse(
+        when(service.consultarIndicadores(any(), any(), any())).thenReturn(new IndicadoresResponse(
                 0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), List.of(
                         new IndicadoresResponse.Detalhamento(com.example.painel.enums.Risco.VERMELHO,
                                 com.example.painel.enums.TipoAtendimento.CLINICO, null,
@@ -64,7 +66,7 @@ class IndicadorControllerTests {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"tempoMedioEsperaMinutos\":null")));
     }
     @Test void falhaDeBancoNaoVira400() {
-        when(service.consultarIndicadores(any(), any()))
+        when(service.consultarIndicadores(any(), any(), any()))
                 .thenThrow(new org.springframework.dao.DataAccessResourceFailureException("indisponível"));
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
                 mvc.perform(get("/indicadores").param("inicio", inicio).param("fim", fim)))

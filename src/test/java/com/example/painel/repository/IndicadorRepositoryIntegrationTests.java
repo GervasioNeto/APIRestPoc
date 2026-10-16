@@ -21,7 +21,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@org.testcontainers.junit.jupiter.Testcontainers
 class IndicadorRepositoryIntegrationTests {
+    @org.testcontainers.junit.jupiter.Container
+    static org.testcontainers.containers.PostgreSQLContainer<?> postgres =
+            new org.testcontainers.containers.PostgreSQLContainer<>("postgres:16-alpine");
+
+    @org.springframework.test.context.DynamicPropertySource
+    static void database(org.springframework.test.context.DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
 
     @Autowired
     private IndicadorRepository indicadorRepository;
@@ -87,9 +99,9 @@ class IndicadorRepositoryIntegrationTests {
 
         entityManager.flush();
 
-        long cadastrados = indicadorRepository.countCadastrados(inicioJanela, fimJanela);
-        long classificados = indicadorRepository.countClassificados(inicioJanela, fimJanela);
-        long atendidos = indicadorRepository.countAtendidos(inicioJanela, fimJanela);
+        long cadastrados = indicadorRepository.countCadastrados(inicioJanela, fimJanela, false);
+        long classificados = indicadorRepository.countClassificados(inicioJanela, fimJanela, false);
+        long atendidos = indicadorRepository.countAtendidos(inicioJanela, fimJanela, false);
 
         // Esperado: 3 cadastrados na janela, 2 classificados, 1 atendido
         // O paciente 4 (de 25/08) não deve ser contabilizado
@@ -126,7 +138,7 @@ class IndicadorRepositoryIntegrationTests {
         entityManager.flush();
 
         List<IndicadorRepository.TempoMedioPorRiscoTipo> resultados =
-                indicadorRepository.tempoMedioEsperaPorRiscoETipo(inicioJanela, fimJanela);
+                indicadorRepository.tempoMedioEsperaPorRiscoETipo(inicioJanela, fimJanela, false);
 
         assertThat(resultados).hasSize(1);
         IndicadorRepository.TempoMedioPorRiscoTipo item = resultados.get(0);
@@ -172,7 +184,7 @@ class IndicadorRepositoryIntegrationTests {
         entityManager.flush();
 
         List<IndicadorRepository.ForaDoProtocoloPorRiscoTipo> resultados =
-                indicadorRepository.contarForaDoProtocoloPorRiscoETipo(inicioJanela, fimJanela);
+                indicadorRepository.contarForaDoProtocoloPorRiscoETipo(inicioJanela, fimJanela, false);
 
         assertThat(resultados).hasSize(1);
         IndicadorRepository.ForaDoProtocoloPorRiscoTipo item = resultados.get(0);

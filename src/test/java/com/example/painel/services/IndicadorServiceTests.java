@@ -14,30 +14,32 @@ class IndicadorServiceTests {
         assertThatThrownBy(() -> service.consultarIndicadores(null, agora)).isInstanceOf(IndicadorService.PeriodoInvalidoException.class);
         assertThatThrownBy(() -> service.consultarIndicadores(agora, null)).isInstanceOf(IndicadorService.PeriodoInvalidoException.class);
         assertThatThrownBy(() -> service.consultarIndicadores(agora, agora.minusSeconds(1))).isInstanceOf(IndicadorService.PeriodoInvalidoException.class);
+        assertThatThrownBy(() -> service.consultarIndicadores(agora, agora, null))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("escopo é obrigatório");
         verifyNoInteractions(repository);
     }
     @Test void agregacoesNulasEPercentuaisDecimais() {
         var repository = mock(IndicadorRepository.class);
         var service = new IndicadorService(repository);
         var inicio = LocalDateTime.of(2026, 9, 1, 0, 0);
-        when(repository.countCadastrados(inicio, inicio)).thenReturn(3L);
-        when(repository.countClassificados(inicio, inicio)).thenReturn(1L);
-        when(repository.countAtendidos(inicio, inicio)).thenReturn(2L);
+        when(repository.countCadastrados(inicio, inicio, false)).thenReturn(3L);
+        when(repository.countClassificados(inicio, inicio, false)).thenReturn(1L);
+        when(repository.countAtendidos(inicio, inicio, false)).thenReturn(2L);
         var contagem = mock(IndicadorRepository.RiscoContagem.class);
         when(contagem.getTotal()).thenReturn(null);
         when(contagem.getRisco()).thenReturn(com.example.painel.enums.Risco.VERMELHO);
-        when(repository.contarPorRisco(inicio, inicio)).thenReturn(java.util.List.of(contagem));
+        when(repository.contarPorRisco(inicio, inicio, false)).thenReturn(java.util.List.of(contagem));
         var media = mock(IndicadorRepository.TempoMedioPorRiscoTipo.class);
         when(media.getTempoMedioMinutos()).thenReturn(null);
         when(media.getRisco()).thenReturn("VERMELHO");
         when(media.getTipo()).thenReturn("CLINICO");
-        when(repository.tempoMedioEsperaPorRiscoETipo(inicio, inicio)).thenReturn(java.util.List.of(media));
+        when(repository.tempoMedioEsperaPorRiscoETipo(inicio, inicio, false)).thenReturn(java.util.List.of(media));
         var protocolo = mock(IndicadorRepository.ForaDoProtocoloPorRiscoTipo.class);
         when(protocolo.getTotal()).thenReturn(null);
         when(protocolo.getForaDoPrazo()).thenReturn(null);
         when(protocolo.getRisco()).thenReturn("VERMELHO");
         when(protocolo.getTipo()).thenReturn("CLINICO");
-        when(repository.contarForaDoProtocoloPorRiscoETipo(inicio, inicio)).thenReturn(java.util.List.of(protocolo));
+        when(repository.contarForaDoProtocoloPorRiscoETipo(inicio, inicio, false)).thenReturn(java.util.List.of(protocolo));
         var r = service.consultarIndicadores(inicio, inicio);
         assertThat(r.percentualClassificados()).isEqualByComparingTo("33.33");
         assertThat(r.percentualAtendidos()).isEqualByComparingTo("66.67");
