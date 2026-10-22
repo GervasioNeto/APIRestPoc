@@ -1,5 +1,6 @@
 package com.example.painel.controllers;
 
+import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.Paciente;
 import com.example.painel.services.PacienteService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,9 +69,19 @@ public class PacienteController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/{id}/rechamar-triagem")
+    public ResponseEntity<Paciente> rechamarTriagem(@PathVariable Long id) {
+        return ResponseEntity.ok(pacienteService.rechamarTriagem(id));
+    }
+
     @PutMapping("/{id}/rechamar")
     public ResponseEntity<Paciente> rechamar(@PathVariable Long id) {
         return ResponseEntity.ok(pacienteService.rechamarPaciente(id));
+    }
+
+    @GetMapping("/{id}/chamadas")
+    public ResponseEntity<List<HistoricoChamadaResponse>> listarChamadas(@PathVariable Long id) {
+        return ResponseEntity.ok(pacienteService.listarHistoricoChamadas(id));
     }
 
     @PutMapping("/{id}/recolocar-fila")

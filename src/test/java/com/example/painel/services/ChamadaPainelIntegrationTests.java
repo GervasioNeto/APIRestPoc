@@ -1,6 +1,7 @@
 package com.example.painel.services;
 
 import com.example.painel.dto.ChamadaPainelResponse;
+import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.ChamadaPainel;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
@@ -22,9 +23,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.test.context.ActiveProfiles;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@ActiveProfiles("test")
 class ChamadaPainelIntegrationTests {
 
     @Autowired
@@ -113,6 +117,90 @@ class ChamadaPainelIntegrationTests {
 
         assertThat(recentes).extracting(ChamadaPainelResponse::patientName)
                 .containsExactly("Segunda", "Primeira");
+    }
+
+    @Test
+    void historicoDoPacienteRetornaUmaTriagemETresConsultoriosEmOrdemCronologica() {
+        Paciente paciente = criarPaciente("Carla Mendes");
+        Paciente outro = criarPaciente("Outro Paciente");
+        Consultorio consultorio = criarConsultorio(4L);
+
+        pacienteService.chamarParaTriagem(paciente.getId());
+        pacienteService.chamarParaTriagem(outro.getId());
+        Paciente dados = new Paciente();
+        dados.setRisco(Risco.AMARELO);
+        dados.setTipo(TipoAtendimento.PSIQUIATRICO);
+        pacienteService.classificar(paciente.getId(), dados);
+        pacienteService.chamarParaConsultorio(paciente.getId(), consultorio.getId());
+        pacienteService.rechamarPaciente(paciente.getId());
+        pacienteService.rechamarPaciente(paciente.getId());
+
+        List<HistoricoChamadaResponse> historico = pacienteService.listarHistoricoChamadas(paciente.getId());
+
+        assertThat(historico).extracting(HistoricoChamadaResponse::tipo)
+                .containsExactly("TRIAGEM", "CONSULTORIO", "CONSULTORIO", "CONSULTORIO");
+        assertThat(historico).extracting(HistoricoChamadaResponse::destino)
+                .containsExactly("Triagem", "Consultorio 4", "Consultorio 4", "Consultorio 4");
+        assertThat(historico).extracting(HistoricoChamadaResponse::criadaEm)
+                .isSortedAccordingTo(java.util.Comparator.naturalOrder());
+    }
+
+    @Test
+    void finalizarAtendimentoAnonimizaTodasAsChamadasDoPaciente() {
+        Paciente paciente = criarPacienteClassificado("Pedro Alves", Risco.LARANJA);
+        Paciente outro = criarPaciente("Lucia Rocha");
+        Consultorio consultorio = criarConsultorio(5L);
+
+        pacienteService.chamarParaTriagem(paciente.getId());
+        pacienteService.chamarParaTriagem(outro.getId());
+        pacienteService.chamarParaConsultorio(paciente.getId(), consultorio.getId());
+        pacienteService.rechamarPaciente(paciente.getId());
+
+        pacienteService.finalizarAtendimento(paciente.getId());
+
+        assertChamadasAnonimizadas(paciente.getId(), 3, "Pedro Alves");
+        assertThat(chamadasDoPaciente(outro.getId()))
+                .extracting(ChamadaPainel::getNomePaciente).containsExactly("Lucia Rocha");
+
+        List<ChamadaPainelResponse> recentes = chamadaPainelService.listarRecentes();
+        assertThat(recentes).hasSize(4);
+        assertThat(recentes).extracting(ChamadaPainelResponse::patientName)
+                .doesNotContain("Pedro Alves")
+                .contains("Paciente Anônimo", "Lucia Rocha");
+    }
+
+    @Test
+    void registrarDesistenciaAnonimizaTodasAsChamadasDoPaciente() {
+        Paciente paciente = criarPaciente("Rita Gomes");
+        Paciente outro = criarPaciente("Marcos Dias");
+
+        pacienteService.chamarParaTriagem(paciente.getId());
+        pacienteService.rechamarTriagem(paciente.getId());
+        pacienteService.chamarParaTriagem(outro.getId());
+
+        pacienteService.registrarDesistencia(paciente.getId());
+
+        assertChamadasAnonimizadas(paciente.getId(), 2, "Rita Gomes");
+        assertThat(chamadasDoPaciente(outro.getId()))
+                .extracting(ChamadaPainel::getNomePaciente).containsExactly("Marcos Dias");
+
+        assertThat(chamadaPainelService.listarRecentes())
+                .extracting(ChamadaPainelResponse::patientName)
+                .containsExactly("Marcos Dias", "Paciente Anônimo", "Paciente Anônimo");
+    }
+
+    private void assertChamadasAnonimizadas(Long pacienteId, int quantidade, String nomeReal) {
+        List<ChamadaPainel> chamadas = chamadasDoPaciente(pacienteId);
+        assertThat(chamadas).hasSize(quantidade);
+        assertThat(chamadas).extracting(ChamadaPainel::getNomePaciente)
+                .doesNotContain(nomeReal)
+                .containsOnly("Paciente Anônimo");
+    }
+
+    private List<ChamadaPainel> chamadasDoPaciente(Long pacienteId) {
+        return chamadaPainelRepository.findAll().stream()
+                .filter(chamada -> chamada.getPacienteId().equals(pacienteId))
+                .toList();
     }
 
     private Paciente criarPaciente(String nome) {
