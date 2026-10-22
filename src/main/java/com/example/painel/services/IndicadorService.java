@@ -42,6 +42,7 @@ public class IndicadorService {
         long cadastrados = repository.countCadastrados(inicio, fim, samu);
         long classificados = repository.countClassificados(inicio, fim, samu);
         long atendidos = repository.countAtendidos(inicio, fim, samu);
+        var tempos = repository.temposMedios(inicio, fim, samu);
         Map<Risco, Long> contagens = new EnumMap<>(Risco.class);
         for (Risco risco : Risco.values()) contagens.put(risco, 0L);
         for (var grupo : repository.contarPorRisco(inicio, fim, samu)) {
@@ -67,6 +68,9 @@ public class IndicadorService {
         return new IndicadoresResponse(
                 cadastrados, classificados, atendidos,
                 percentual(classificados, cadastrados), percentual(atendidos, cadastrados),
+                tempos == null ? null : tempos.getAcolhimentoMinutos(),
+                tempos == null ? null : tempos.getClassificacaoAteMedicoMinutos(),
+                tempos == null ? null : tempos.getEntradaAteMedicoMinutos(),
                 Collections.unmodifiableMap(contagens), List.copyOf(detalhes));
     }
 

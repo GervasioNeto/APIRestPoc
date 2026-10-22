@@ -198,6 +198,66 @@ class IndicadorRepositoryIntegrationTests {
         assertThat(percentual).isEqualTo(50.0);
     }
 
+    @Test
+    @DisplayName("Teste 4: Deve calcular os tempos médios 1-3 sem filtrar status, ignorando datas nulas e respeitando o escopo")
+    void deveCalcularTemposMediosGeraisPorEscopo() {
+        // Paciente A: FINALIZADO -> acolhimento 4, classificação->médico 20, entrada->médico 30
+        Paciente a = criarPaciente("Paciente A", TipoStatus.FINALIZADO, Risco.LARANJA, TipoAtendimento.CLINICO,
+                LocalDateTime.of(2026, 9, 1, 9, 0, 0),
+                LocalDateTime.of(2026, 9, 1, 9, 10, 0),
+                LocalDateTime.of(2026, 9, 1, 9, 30, 0));
+        a.setChamadaTriagemAt(LocalDateTime.of(2026, 9, 1, 9, 4, 0));
+        pacienteRepository.save(a);
+
+        // Paciente B: chamado ao consultório e não compareceu (DESISTENCIA) -> 2 / 40 / 45, entra nas três médias
+        Paciente b = criarPaciente("Paciente B", TipoStatus.DESISTENCIA, Risco.AMARELO, TipoAtendimento.PSIQUIATRICO,
+                LocalDateTime.of(2026, 9, 1, 10, 0, 0),
+                LocalDateTime.of(2026, 9, 1, 10, 5, 0),
+                LocalDateTime.of(2026, 9, 1, 10, 45, 0));
+        b.setChamadaTriagemAt(LocalDateTime.of(2026, 9, 1, 10, 2, 0));
+        pacienteRepository.save(b);
+
+        // Paciente C: ainda aguardando consulta -> só acolhimento (6); sem chamada ao consultório fica fora de 2 e 3
+        Paciente c = criarPaciente("Paciente C", TipoStatus.AGUARDANDO_CONSULTA, Risco.VERDE, TipoAtendimento.PSIQUIATRICO,
+                LocalDateTime.of(2026, 9, 1, 11, 0, 0),
+                LocalDateTime.of(2026, 9, 1, 11, 10, 0),
+                null);
+        c.setChamadaTriagemAt(LocalDateTime.of(2026, 9, 1, 11, 6, 0));
+        pacienteRepository.save(c);
+
+        // Paciente D: SAMU -> 30 / 60 / 95, só no escopo SAMU
+        Paciente d = criarPaciente("Paciente D - SAMU", TipoStatus.FINALIZADO, Risco.LARANJA, TipoAtendimento.SAMU,
+                LocalDateTime.of(2026, 9, 1, 13, 0, 0),
+                LocalDateTime.of(2026, 9, 1, 13, 35, 0),
+                LocalDateTime.of(2026, 9, 1, 14, 35, 0));
+        d.setChamadaTriagemAt(LocalDateTime.of(2026, 9, 1, 13, 30, 0));
+        pacienteRepository.save(d);
+
+        entityManager.flush();
+
+        // GERAL: acolhimento (4 + 2 + 6) / 3 = 4.0; classificação->médico (20 + 40) / 2 = 30.0; entrada->médico (30 + 45) / 2 = 37.5
+        IndicadorRepository.TemposMedios geral = indicadorRepository.temposMedios(inicioJanela, fimJanela, false);
+        assertThat(geral.getAcolhimentoMinutos()).isEqualTo(4.0);
+        assertThat(geral.getClassificacaoAteMedicoMinutos()).isEqualTo(30.0);
+        assertThat(geral.getEntradaAteMedicoMinutos()).isEqualTo(37.5);
+
+        IndicadorRepository.TemposMedios samu = indicadorRepository.temposMedios(inicioJanela, fimJanela, true);
+        assertThat(samu.getAcolhimentoMinutos()).isEqualTo(30.0);
+        assertThat(samu.getClassificacaoAteMedicoMinutos()).isEqualTo(60.0);
+        assertThat(samu.getEntradaAteMedicoMinutos()).isEqualTo(95.0);
+    }
+
+    @Test
+    @DisplayName("Teste 5: Sem amostras no período, os tempos médios 1-3 vêm nulos")
+    void temposMediosSemAmostrasSaoNulos() {
+        IndicadorRepository.TemposMedios tempos = indicadorRepository.temposMedios(inicioJanela, fimJanela, false);
+
+        assertThat(tempos).isNotNull();
+        assertThat(tempos.getAcolhimentoMinutos()).isNull();
+        assertThat(tempos.getClassificacaoAteMedicoMinutos()).isNull();
+        assertThat(tempos.getEntradaAteMedicoMinutos()).isNull();
+    }
+
     private Paciente criarPaciente(String nome,
                                    TipoStatus status,
                                    Risco risco,

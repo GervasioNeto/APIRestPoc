@@ -48,6 +48,11 @@ class IndicadorServiceIntegrationTests {
         assertThat(r.atendidos()).isEqualTo(14);
         assertThat(r.percentualClassificados()).isEqualByComparingTo("89.47");
         assertThat(r.percentualAtendidos()).isEqualByComparingTo("73.68");
+        // Acolhimento: 17 amostras (inclui aguardando consulta e desistência), todas de 2 min.
+        // Classificação/entrada até médico: os 14 pares finalizados.
+        assertThat(r.tempoMedioAcolhimentoMinutos()).isCloseTo(2.0, within(0.000001));
+        assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isCloseTo(57.5, within(0.000001));
+        assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isCloseTo(62.5, within(0.000001));
         // A contagem por risco inclui também
         // a desistência já classificada (Paciente Anônimo): GERAL tem 5 laranjas, excluindo os 2 SAMU.
         assertThat(r.contagensPorRisco()).containsEntry(Risco.VERMELHO, 4L)
@@ -82,6 +87,9 @@ class IndicadorServiceIntegrationTests {
         assertThat(r.atendidos()).isZero();
         assertThat(r.percentualClassificados()).isZero();
         assertThat(r.percentualAtendidos()).isZero();
+        assertThat(r.tempoMedioAcolhimentoMinutos()).isNull();
+        assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isNull();
+        assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isNull();
         assertThat(r.contagensPorRisco().values()).allMatch(v -> v == 0);
         assertThat(r.porRiscoETipo()).allSatisfy(g -> {
             assertThat(g.tempoMedioEsperaMinutos()).isNull();
@@ -113,6 +121,9 @@ class IndicadorServiceIntegrationTests {
         jdbc.update("UPDATE paciente SET chamada_triagem_at = NULL, chamada_consultorio_at = NULL WHERE chegada_at = ?", inicio.withHour(8));
         var r = service.consultarIndicadores(inicio.withHour(8), inicio.withHour(8));
         assertThat(r.atendidos()).isEqualTo(1);
+        assertThat(r.tempoMedioAcolhimentoMinutos()).isNull();
+        assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isNull();
+        assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isNull();
         assertThat(r.porRiscoETipo()).allSatisfy(g -> assertThat(g.tempoMedioEsperaMinutos()).isNull());
     }
 
@@ -123,6 +134,9 @@ class IndicadorServiceIntegrationTests {
         assertThat(r.atendidos()).isEqualTo(2);
         assertThat(r.percentualClassificados()).isEqualByComparingTo("100.00");
         assertThat(r.percentualAtendidos()).isEqualByComparingTo("100.00");
+        assertThat(r.tempoMedioAcolhimentoMinutos()).isCloseTo(4.0, within(0.000001));
+        assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isCloseTo(12.5, within(0.000001));
+        assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isCloseTo(17.5, within(0.000001));
         assertThat(r.contagensPorRisco()).containsEntry(Risco.LARANJA, 2L);
         assertThat(r.contagensPorRisco()).allSatisfy((cor, total) ->
                 assertThat(total).isEqualTo(cor == Risco.LARANJA ? 2L : 0L));
@@ -160,6 +174,9 @@ class IndicadorServiceIntegrationTests {
                 .andExpect(jsonPath("$.atendidos").value(14))
                 .andExpect(jsonPath("$.percentualClassificados").value(89.47))
                 .andExpect(jsonPath("$.percentualAtendidos").value(73.68))
+                .andExpect(jsonPath("$.tempoMedioAcolhimentoMinutos").value(2.0))
+                .andExpect(jsonPath("$.tempoMedioClassificacaoAteMedicoMinutos").value(57.5))
+                .andExpect(jsonPath("$.tempoMedioEntradaAteMedicoMinutos").value(62.5))
                 .andExpect(jsonPath("$.contagensPorRisco.LARANJA").value(5))
                 .andReturn().getResponse().getContentAsString();
         mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "GERAL"))
@@ -170,6 +187,9 @@ class IndicadorServiceIntegrationTests {
                 .andExpect(jsonPath("$.atendidos").value(2))
                 .andExpect(jsonPath("$.percentualClassificados").value(100.0))
                 .andExpect(jsonPath("$.percentualAtendidos").value(100.0))
+                .andExpect(jsonPath("$.tempoMedioAcolhimentoMinutos").value(4.0))
+                .andExpect(jsonPath("$.tempoMedioClassificacaoAteMedicoMinutos").value(12.5))
+                .andExpect(jsonPath("$.tempoMedioEntradaAteMedicoMinutos").value(17.5))
                 .andExpect(jsonPath("$.contagensPorRisco.LARANJA").value(2));
         mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "INVALIDO"))
                 .andExpect(status().isBadRequest());

@@ -104,16 +104,18 @@ ON CONFLICT (risco, tipo) DO NOTHING;
 
 -- =====================================================================
 -- Mapeamento indicador -> colunas (docs/indicadores/indicadores.xlsx)
--- Todas as consultas abaixo usam a tabela `paciente` diretamente,
--- filtrando status IN ('FINALIZADO', 'DESISTENCIA') pra considerar
--- apenas atendimentos já encerrados.
+-- Todas as consultas abaixo usam a tabela `paciente` diretamente.
+-- Não há filtro global de status: cada indicador aplica só a condição
+-- da sua fórmula (ex.: atendidos exige status = 'FINALIZADO').
 -- =====================================================================
+-- 1-3 usam a 1ª chamada no painel, então entra também quem foi chamado
+--     e não compareceu. Cada média considera só quem tem as duas datas.
 -- 1  Tempo de Espera p/ Acolhimento/Classificação
---       = chamada_triagem_at - chegada_at
+--       = AVG(chamada_triagem_at - chegada_at)
 -- 2  Tempo de Espera Classificação até 1º atendimento médico
---       = chamada_consultorio_at - classified_at
+--       = AVG(chamada_consultorio_at - classified_at)
 -- 3  Tempo de Espera Entrada (NAC) até Atendimento médico
---       = chamada_consultorio_at - chegada_at
+--       = AVG(chamada_consultorio_at - chegada_at)
 -- 4  Nº de pacientes cadastrados
 --       = COUNT(*)  -- todos, independente do status
 -- 5  Nº total de pacientes classificados

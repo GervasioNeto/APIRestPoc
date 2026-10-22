@@ -86,12 +86,13 @@ INSERT INTO paciente (nome, cpf, status, risco, tipo, chegada_at, chamada_triage
  TIMESTAMP '2026-09-01 12:20:00', TIMESTAMP '2026-09-01 12:45:00');
 
 -- LARANJA / SAMU (máximo 10 min)
+-- Acolhimento de 4 min (os demais têm 2) pra que o indicador 1 diferencie GERAL de SAMU.
 INSERT INTO paciente (nome, cpf, status, risco, tipo, chegada_at, chamada_triagem_at, classified_at, chamada_consultorio_at, atendimento_finalizado_at) VALUES
 ('Paciente Teste 15', '000.000.000-15', 'FINALIZADO', 'LARANJA', 'SAMU',
- TIMESTAMP '2026-09-02 08:00:00', TIMESTAMP '2026-09-02 08:02:00', TIMESTAMP '2026-09-02 08:05:00',
+ TIMESTAMP '2026-09-02 08:00:00', TIMESTAMP '2026-09-02 08:04:00', TIMESTAMP '2026-09-02 08:05:00',
  TIMESTAMP '2026-09-02 08:10:00', TIMESTAMP '2026-09-02 08:30:00'),
 ('Paciente Teste 16', '000.000.000-16', 'FINALIZADO', 'LARANJA', 'SAMU',
- TIMESTAMP '2026-09-02 08:15:00', TIMESTAMP '2026-09-02 08:17:00', TIMESTAMP '2026-09-02 08:20:00',
+ TIMESTAMP '2026-09-02 08:15:00', TIMESTAMP '2026-09-02 08:19:00', TIMESTAMP '2026-09-02 08:20:00',
  TIMESTAMP '2026-09-02 08:40:00', TIMESTAMP '2026-09-02 09:00:00');
 
 -- ---------------------------------------------------------------------
