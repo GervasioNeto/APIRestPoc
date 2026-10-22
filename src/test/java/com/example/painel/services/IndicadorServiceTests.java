@@ -62,5 +62,23 @@ class IndicadorServiceTests {
         var r = service.consultarIndicadores(agora, agora);
         assertThat(r.percentualClassificados()).isZero();
         assertThat(r.percentualAtendidos()).isZero();
+        assertThat(r.tempoMedioAcolhimentoMinutos()).isNull();
+        assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isNull();
+        assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isNull();
+    }
+
+    @Test void repassaTemposMediosDoEscopo() {
+        var repository = mock(IndicadorRepository.class);
+        var service = new IndicadorService(repository);
+        var inicio = LocalDateTime.of(2026, 9, 1, 0, 0);
+        var tempos = mock(IndicadorRepository.TemposMedios.class);
+        when(tempos.getAcolhimentoMinutos()).thenReturn(4.0);
+        when(tempos.getClassificacaoAteMedicoMinutos()).thenReturn(null);
+        when(tempos.getEntradaAteMedicoMinutos()).thenReturn(17.5);
+        when(repository.temposMedios(inicio, inicio, true)).thenReturn(tempos);
+        var r = service.consultarIndicadores(inicio, inicio, com.example.painel.enums.EscopoIndicadores.SAMU);
+        assertThat(r.tempoMedioAcolhimentoMinutos()).isEqualTo(4.0);
+        assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isNull();
+        assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isEqualTo(17.5);
     }
 }

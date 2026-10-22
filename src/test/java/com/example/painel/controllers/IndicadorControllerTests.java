@@ -24,7 +24,7 @@ class IndicadorControllerTests {
     }
     @Test void consultaValida() throws Exception {
         when(service.consultarIndicadores(any(), any(), any())).thenReturn(new IndicadoresResponse(
-                4, 3, 2, new BigDecimal("75.00"), new BigDecimal("50.00"),
+                4, 3, 2, new BigDecimal("75.00"), new BigDecimal("50.00"), 2.0, 57.5, 62.5,
                 Map.of(com.example.painel.enums.Risco.LARANJA, 3L), List.of(
                         new IndicadoresResponse.Detalhamento(com.example.painel.enums.Risco.LARANJA,
                                 com.example.painel.enums.TipoAtendimento.CLINICO, 12.5,
@@ -32,6 +32,9 @@ class IndicadorControllerTests {
         mvc.perform(get("/indicadores").param("inicio", inicio).param("fim", fim))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.cadastrados").value(4))
                 .andExpect(jsonPath("$.percentualClassificados").value(75.0))
+                .andExpect(jsonPath("$.tempoMedioAcolhimentoMinutos").value(2.0))
+                .andExpect(jsonPath("$.tempoMedioClassificacaoAteMedicoMinutos").value(57.5))
+                .andExpect(jsonPath("$.tempoMedioEntradaAteMedicoMinutos").value(62.5))
                 .andExpect(jsonPath("$.contagensPorRisco.LARANJA").value(3))
                 .andExpect(jsonPath("$.porRiscoETipo[0].risco").value("LARANJA"))
                 .andExpect(jsonPath("$.porRiscoETipo[0].tipo").value("CLINICO"))
@@ -55,14 +58,16 @@ class IndicadorControllerTests {
     }
     @Test void periodoVazioEDatasIguais() throws Exception {
         when(service.consultarIndicadores(any(), any(), any())).thenReturn(new IndicadoresResponse(
-                0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, Map.of(), List.of(
+                0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, null, null, null, Map.of(), List.of(
                         new IndicadoresResponse.Detalhamento(com.example.painel.enums.Risco.VERMELHO,
                                 com.example.painel.enums.TipoAtendimento.CLINICO, null,
                                 0, 0, BigDecimal.ZERO))));
         mvc.perform(get("/indicadores").param("inicio", inicio).param("fim", inicio))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.cadastrados").value(0))
                 .andExpect(jsonPath("$.percentualAtendidos").value(0))
-                .andExpect(jsonPath("$.tempoMedioAteClassificacaoMinutos").doesNotExist())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"tempoMedioAcolhimentoMinutos\":null")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"tempoMedioClassificacaoAteMedicoMinutos\":null")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"tempoMedioEntradaAteMedicoMinutos\":null")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"tempoMedioEsperaMinutos\":null")));
     }
     @Test void falhaDeBancoNaoVira400() {

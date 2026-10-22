@@ -17,6 +17,18 @@ public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
     String FILTRO_ESCOPO = " AND ((:samu = true AND p.tipo = 'SAMU') " +
             "OR (:samu = false AND (p.tipo IS NULL OR p.tipo <> 'SAMU'))) ";
 
+    // ---- Grupo 0: tempos médios gerais (indicadores 1-3) ----
+
+    // AVG ignora diferenças nulas: cada média usa só quem tem as suas duas datas.
+    // Sem amostras, a linha única vem com null.
+    @Query(nativeQuery = true, value =
+            "SELECT AVG(EXTRACT(EPOCH FROM (p.chamada_triagem_at - p.chegada_at)) / 60.0) AS acolhimento_minutos, " +
+            "       AVG(EXTRACT(EPOCH FROM (p.chamada_consultorio_at - p.classified_at)) / 60.0) AS classificacao_ate_medico_minutos, " +
+            "       AVG(EXTRACT(EPOCH FROM (p.chamada_consultorio_at - p.chegada_at)) / 60.0) AS entrada_ate_medico_minutos " +
+            "FROM paciente p " +
+            "WHERE p.chegada_at BETWEEN :inicio AND :fim " + FILTRO_ESCOPO)
+    TemposMedios temposMedios(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
+
     // ---- Grupo 1: contagens simples (indicadores 4-13) ----
 
     @Query("SELECT COUNT(p) FROM Paciente p WHERE p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO)
@@ -63,6 +75,12 @@ public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
     List<ForaDoProtocoloPorRiscoTipo> contarForaDoProtocoloPorRiscoETipo(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
 
     // ---- Projections ----
+
+    interface TemposMedios {
+        Double getAcolhimentoMinutos();
+        Double getClassificacaoAteMedicoMinutos();
+        Double getEntradaAteMedicoMinutos();
+    }
 
     interface RiscoContagem {
         Risco getRisco();

@@ -7,8 +7,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Indicadores 4-27 suportados pelo repository, sem dados pessoais.
- * Os indicadores 1-3 não integram este contrato: faltam consultas agregadas.
+ * Indicadores 1-27 suportados pelo repository, sem dados pessoais.
+ * Tempos 1-3 usam a 1ª chamada no painel (inclui quem foi chamado e não
+ * compareceu) e consideram quem tem as duas datas, sem filtro de status.
  * Contagens por risco seguem a query (incluem NAO_CLASSIFICADO).
  * Detalhamento contém as 15 combinações das cinco cores com os três tipos.
  * Médias em minutos, sem arredondamento adicional; null significa sem amostras,
@@ -23,6 +24,9 @@ public record IndicadoresResponse(
         long atendidos,
         BigDecimal percentualClassificados,
         BigDecimal percentualAtendidos,
+        Double tempoMedioAcolhimentoMinutos,
+        Double tempoMedioClassificacaoAteMedicoMinutos,
+        Double tempoMedioEntradaAteMedicoMinutos,
         Map<Risco, Long> contagensPorRisco,
         List<Detalhamento> porRiscoETipo
 ) {
