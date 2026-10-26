@@ -25,7 +25,8 @@ class IndicadorControllerTests {
     @Test void consultaValida() throws Exception {
         when(service.consultarIndicadores(any(), any(), any())).thenReturn(new IndicadoresResponse(
                 4, 3, 2, new BigDecimal("75.00"), new BigDecimal("50.00"), 2.0, 57.5, 62.5,
-                Map.of(com.example.painel.enums.Risco.LARANJA, 3L), List.of(
+                Map.of(com.example.painel.enums.Risco.LARANJA, 3L), 5,
+                Map.of(com.example.painel.enums.Risco.LARANJA, 2L), List.of(
                         new IndicadoresResponse.Detalhamento(com.example.painel.enums.Risco.LARANJA,
                                 com.example.painel.enums.TipoAtendimento.CLINICO, 12.5,
                                 2, 1, new BigDecimal("50.00")))));
@@ -36,6 +37,8 @@ class IndicadorControllerTests {
                 .andExpect(jsonPath("$.tempoMedioClassificacaoAteMedicoMinutos").value(57.5))
                 .andExpect(jsonPath("$.tempoMedioEntradaAteMedicoMinutos").value(62.5))
                 .andExpect(jsonPath("$.contagensPorRisco.LARANJA").value(3))
+                .andExpect(jsonPath("$.totalRechamadas").value(5))
+                .andExpect(jsonPath("$.pacientesRechamadosPorRisco.LARANJA").value(2))
                 .andExpect(jsonPath("$.porRiscoETipo[0].risco").value("LARANJA"))
                 .andExpect(jsonPath("$.porRiscoETipo[0].tipo").value("CLINICO"))
                 .andExpect(jsonPath("$.porRiscoETipo[0].tempoMedioEsperaMinutos").value(12.5))
@@ -58,7 +61,7 @@ class IndicadorControllerTests {
     }
     @Test void periodoVazioEDatasIguais() throws Exception {
         when(service.consultarIndicadores(any(), any(), any())).thenReturn(new IndicadoresResponse(
-                0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, null, null, null, Map.of(), List.of(
+                0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, null, null, null, Map.of(), 0, Map.of(), List.of(
                         new IndicadoresResponse.Detalhamento(com.example.painel.enums.Risco.VERMELHO,
                                 com.example.painel.enums.TipoAtendimento.CLINICO, null,
                                 0, 0, BigDecimal.ZERO))));

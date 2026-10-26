@@ -22,12 +22,25 @@ HTTP 200 para consultas válidas, inclusive sem registros. HTTP 400 para escopo
 inválido, datas malformadas, datas ausentes ou início posterior ao fim.
 Erros internos de banco não são convertidos em erros de validação.
 
-## Contrato preservado
+## Contrato e bloco de rechamadas (IND-08)
 
-O filtro de escopo não alterou o contrato `IndicadoresResponse`. Mantém as 15
-combinações de risco/tipo no detalhamento; combinações excluídas pelo escopo têm
-contagens e percentuais zero e média null. O filtro acontece em todas as queries,
-antes das agregações; não se carregam pacientes para filtrar em memória.
+Além dos indicadores anteriores, `IndicadoresResponse` expõe dois campos
+calculados exclusivamente no backend:
+
+- `totalRechamadas`: soma de `rechamadasTriagemCount` e
+  `rechamadasConsultorioCount` dos pacientes no período e escopo;
+- `pacientesRechamadosPorRisco`: quantidade de pacientes distintos com pelo
+  menos uma rechamada em cada nível de risco. O mapa sempre contém todos os
+  valores de `Risco`, usando zero quando não há pacientes.
+
+Contadores nulos de registros legados valem zero. O frontend deve consumir
+esses campos diretamente e não persistir ou recalcular rechamadas em
+`localStorage`.
+
+As 15 combinações de risco/tipo permanecem no detalhamento; combinações
+excluídas pelo escopo têm contagens e percentuais zero e média null. O filtro
+acontece nas queries, antes das agregações; não se carregam pacientes para
+filtrar em memória.
 
 As regras de status continuam individuais: cadastrados não filtra status;
 classificados exige `classifiedAt`; atendidos exige `FINALIZADO`; contagens por
@@ -78,6 +91,10 @@ Período de 2026-09-01T00:00:00 a 2026-09-03T23:59:59:
 | tempoMedioClassificacaoAteMedicoMinutos | 57.5 | 12.5 |
 | tempoMedioEntradaAteMedicoMinutos | 62.5 | 17.5 |
 | contagensPorRisco.LARANJA | 5 | 2 |
+| totalRechamadas | 7 | 2 |
+| pacientesRechamadosPorRisco.VERMELHO | 2 | 0 |
+| pacientesRechamadosPorRisco.LARANJA | 1 | 1 |
+| pacientesRechamadosPorRisco.AMARELO | 1 | 0 |
 
 SAMU/LARANJA: média 12.5 minutos, totalComProtocolo=2, foraDoPrazo=1,
 percentualForaDoPrazo=50.00. Em GERAL, os grupos SAMU ficam vazios; no escopo
@@ -128,3 +145,11 @@ Corrigido o comentário do `schema.sql`, que citava um filtro global de status
 que nenhuma query aplica. Validação: 24 testes de indicadores e suíte completa
 (56) aprovados, com PostgreSQL isolado via Testcontainers. O consumo dos três
 campos no frontend continua pendente.
+
+## Registro da entrega - 26/10/2026
+
+Implementado o IND-08 no `GET /indicadores`: total de rechamadas e pacientes
+rechamados por nível de risco, ambos filtrados por período e pelo escopo
+GERAL/SAMU. Os valores são agregados no PostgreSQL e o frontend não precisa de
+`localStorage`. O seed cobre rechamadas de triagem e consultório, múltiplas
+rechamadas do mesmo paciente, registros nulos legados, escopo e período.

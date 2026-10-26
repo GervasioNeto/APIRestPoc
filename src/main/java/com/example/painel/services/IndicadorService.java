@@ -48,6 +48,12 @@ public class IndicadorService {
         for (var grupo : repository.contarPorRisco(inicio, fim, samu)) {
             if (grupo.getRisco() != null) contagens.put(grupo.getRisco(), zero(grupo.getTotal()));
         }
+        long totalRechamadas = repository.totalRechamadas(inicio, fim, samu);
+        Map<Risco, Long> pacientesRechamadosPorRisco = new EnumMap<>(Risco.class);
+        for (Risco risco : Risco.values()) pacientesRechamadosPorRisco.put(risco, 0L);
+        for (var grupo : repository.contarPacientesRechamadosPorRisco(inicio, fim, samu)) {
+            if (grupo.getRisco() != null) pacientesRechamadosPorRisco.put(grupo.getRisco(), zero(grupo.getTotal()));
+        }
         var medias = repository.tempoMedioEsperaPorRiscoETipo(inicio, fim, samu);
         var protocolos = repository.contarForaDoProtocoloPorRiscoETipo(inicio, fim, samu);
         List<Detalhamento> detalhes = new ArrayList<>();
@@ -71,7 +77,8 @@ public class IndicadorService {
                 tempos == null ? null : tempos.getAcolhimentoMinutos(),
                 tempos == null ? null : tempos.getClassificacaoAteMedicoMinutos(),
                 tempos == null ? null : tempos.getEntradaAteMedicoMinutos(),
-                Collections.unmodifiableMap(contagens), List.copyOf(detalhes));
+                Collections.unmodifiableMap(contagens), totalRechamadas,
+                Collections.unmodifiableMap(pacientesRechamadosPorRisco), List.copyOf(detalhes));
     }
 
     private static long zero(Long valor) { return valor == null ? 0L : valor; }

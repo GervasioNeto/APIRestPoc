@@ -46,6 +46,22 @@ public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
             "WHERE p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO + "GROUP BY p.risco")
     List<RiscoContagem> contarPorRisco(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
 
+    // ---- Grupo 1.1: rechamadas (IND-08) ----
+
+    @Query("SELECT COALESCE(SUM(COALESCE(p.rechamadasTriagemCount, 0) + " +
+            "COALESCE(p.rechamadasConsultorioCount, 0)), 0) FROM Paciente p " +
+            "WHERE p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO)
+    long totalRechamadas(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
+
+    @Query("SELECT p.risco AS risco, COUNT(p) AS total FROM Paciente p " +
+            "WHERE p.chegadaAt BETWEEN :inicio AND :fim " +
+            "AND (COALESCE(p.rechamadasTriagemCount, 0) + COALESCE(p.rechamadasConsultorioCount, 0)) > 0" +
+            FILTRO_ESCOPO + "GROUP BY p.risco")
+    List<RiscoContagem> contarPacientesRechamadosPorRisco(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim,
+            @Param("samu") boolean samu);
+
     // ---- Grupo 2: tempo médio de espera por risco/tipo (indicadores 14-20) ----
 
     @Query(nativeQuery = true, value =
