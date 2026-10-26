@@ -59,6 +59,14 @@ class IndicadorServiceIntegrationTests {
                 .containsEntry(Risco.LARANJA, 5L).containsEntry(Risco.AMARELO, 3L)
                 .containsEntry(Risco.VERDE, 3L).containsEntry(Risco.AZUL, 2L)
                 .containsEntry(Risco.NAO_CLASSIFICADO, 2L);
+        assertThat(r.totalRechamadas()).isEqualTo(7);
+        assertThat(r.pacientesRechamadosPorRisco())
+                .containsEntry(Risco.VERMELHO, 2L)
+                .containsEntry(Risco.LARANJA, 1L)
+                .containsEntry(Risco.AMARELO, 1L)
+                .containsEntry(Risco.VERDE, 0L)
+                .containsEntry(Risco.AZUL, 0L)
+                .containsEntry(Risco.NAO_CLASSIFICADO, 0L);
         var esperadas = java.util.Map.of("VERMELHO/CLINICO", 2.5, "LARANJA/CLINICO", 12.5,
                 "VERMELHO/PSIQUIATRICO", 2.5, "LARANJA/PSIQUIATRICO", 10.0,
                 "AMARELO/PSIQUIATRICO", 60.0, "VERDE/PSIQUIATRICO", 105.0,
@@ -91,6 +99,8 @@ class IndicadorServiceIntegrationTests {
         assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isNull();
         assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isNull();
         assertThat(r.contagensPorRisco().values()).allMatch(v -> v == 0);
+        assertThat(r.totalRechamadas()).isZero();
+        assertThat(r.pacientesRechamadosPorRisco().values()).allMatch(v -> v == 0);
         assertThat(r.porRiscoETipo()).allSatisfy(g -> {
             assertThat(g.tempoMedioEsperaMinutos()).isNull();
             assertThat(g.totalComProtocolo()).isZero();
@@ -140,6 +150,9 @@ class IndicadorServiceIntegrationTests {
         assertThat(r.contagensPorRisco()).containsEntry(Risco.LARANJA, 2L);
         assertThat(r.contagensPorRisco()).allSatisfy((cor, total) ->
                 assertThat(total).isEqualTo(cor == Risco.LARANJA ? 2L : 0L));
+        assertThat(r.totalRechamadas()).isEqualTo(2);
+        assertThat(r.pacientesRechamadosPorRisco()).allSatisfy((cor, total) ->
+                assertThat(total).isEqualTo(cor == Risco.LARANJA ? 1L : 0L));
         assertThat(r.porRiscoETipo()).hasSize(15).allSatisfy(g -> {
             if (g.tipo() == com.example.painel.enums.TipoAtendimento.SAMU && g.risco() == Risco.LARANJA) {
                 assertThat(g.tempoMedioEsperaMinutos()).isCloseTo(12.5, within(0.000001));
@@ -178,6 +191,8 @@ class IndicadorServiceIntegrationTests {
                 .andExpect(jsonPath("$.tempoMedioClassificacaoAteMedicoMinutos").value(57.5))
                 .andExpect(jsonPath("$.tempoMedioEntradaAteMedicoMinutos").value(62.5))
                 .andExpect(jsonPath("$.contagensPorRisco.LARANJA").value(5))
+                .andExpect(jsonPath("$.totalRechamadas").value(7))
+                .andExpect(jsonPath("$.pacientesRechamadosPorRisco.VERMELHO").value(2))
                 .andReturn().getResponse().getContentAsString();
         mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "GERAL"))
                 .andExpect(status().isOk()).andExpect(content().json(padrao));
@@ -190,7 +205,9 @@ class IndicadorServiceIntegrationTests {
                 .andExpect(jsonPath("$.tempoMedioAcolhimentoMinutos").value(4.0))
                 .andExpect(jsonPath("$.tempoMedioClassificacaoAteMedicoMinutos").value(12.5))
                 .andExpect(jsonPath("$.tempoMedioEntradaAteMedicoMinutos").value(17.5))
-                .andExpect(jsonPath("$.contagensPorRisco.LARANJA").value(2));
+                .andExpect(jsonPath("$.contagensPorRisco.LARANJA").value(2))
+                .andExpect(jsonPath("$.totalRechamadas").value(2))
+                .andExpect(jsonPath("$.pacientesRechamadosPorRisco.LARANJA").value(1));
         mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "INVALIDO"))
                 .andExpect(status().isBadRequest());
     }

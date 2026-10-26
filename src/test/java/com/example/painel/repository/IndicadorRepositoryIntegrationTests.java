@@ -258,6 +258,45 @@ class IndicadorRepositoryIntegrationTests {
         assertThat(tempos.getEntradaAteMedicoMinutos()).isNull();
     }
 
+    @Test
+    @DisplayName("IND-08: soma rechamadas e conta pacientes distintos por risco, período e escopo")
+    void deveCalcularRechamadasPorRiscoEPorEscopo() {
+        Paciente geral = criarPaciente("Geral", TipoStatus.FINALIZADO, Risco.VERMELHO,
+                TipoAtendimento.CLINICO, inicioJanela.plusHours(1), inicioJanela.plusHours(1), null);
+        geral.setRechamadasTriagemCount(2);
+        geral.setRechamadasConsultorioCount(3);
+        pacienteRepository.save(geral);
+
+        Paciente samu = criarPaciente("SAMU", TipoStatus.FINALIZADO, Risco.LARANJA,
+                TipoAtendimento.SAMU, inicioJanela.plusHours(2), inicioJanela.plusHours(2), null);
+        samu.setRechamadasTriagemCount(null);
+        samu.setRechamadasConsultorioCount(4);
+        pacienteRepository.save(samu);
+
+        Paciente semRechamada = criarPaciente("Sem rechamada", TipoStatus.FINALIZADO, Risco.AMARELO,
+                TipoAtendimento.CLINICO, inicioJanela.plusHours(3), inicioJanela.plusHours(3), null);
+        pacienteRepository.save(semRechamada);
+
+        Paciente fora = criarPaciente("Fora", TipoStatus.FINALIZADO, Risco.AZUL,
+                TipoAtendimento.CLINICO, inicioJanela.minusDays(1), inicioJanela.minusDays(1), null);
+        fora.setRechamadasTriagemCount(10);
+        pacienteRepository.save(fora);
+        entityManager.flush();
+
+        assertThat(indicadorRepository.totalRechamadas(inicioJanela, fimJanela, false)).isEqualTo(5);
+        assertThat(indicadorRepository.contarPacientesRechamadosPorRisco(inicioJanela, fimJanela, false))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.getRisco()).isEqualTo(Risco.VERMELHO);
+                    assertThat(item.getTotal()).isEqualTo(1);
+                });
+        assertThat(indicadorRepository.totalRechamadas(inicioJanela, fimJanela, true)).isEqualTo(4);
+        assertThat(indicadorRepository.contarPacientesRechamadosPorRisco(inicioJanela, fimJanela, true))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.getRisco()).isEqualTo(Risco.LARANJA);
+                    assertThat(item.getTotal()).isEqualTo(1);
+                });
+    }
+
     private Paciente criarPaciente(String nome,
                                    TipoStatus status,
                                    Risco risco,

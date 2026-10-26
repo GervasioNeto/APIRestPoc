@@ -128,3 +128,13 @@ INSERT INTO paciente (nome, cpf, status, risco, tipo, chegada_at, chamada_triage
 ('Paciente Fora Da Janela', '000.000.000-99', 'FINALIZADO', 'VERMELHO', 'CLINICO',
  TIMESTAMP '2026-08-25 08:00:00', TIMESTAMP '2026-08-25 08:02:00', TIMESTAMP '2026-08-25 08:05:00',
  TIMESTAMP '2026-08-25 08:05:00', TIMESTAMP '2026-08-25 08:25:00');
+
+-- Rechamadas do IND-08. No período: GERAL totaliza 7 rechamadas em 4
+-- pacientes (VERMELHO=2, LARANJA=1, AMARELO=1); SAMU totaliza 2 em 1
+-- paciente LARANJA. O registro fora da janela valida o filtro de período.
+UPDATE paciente SET rechamadas_triagem_count = 1, rechamadas_consultorio_count = 2 WHERE cpf = '000.000.000-01';
+UPDATE paciente SET rechamadas_consultorio_count = 1 WHERE cpf = '000.000.000-02';
+UPDATE paciente SET rechamadas_triagem_count = 1 WHERE cpf = '000.000.000-03';
+UPDATE paciente SET rechamadas_consultorio_count = 2 WHERE cpf = '000.000.000-09';
+UPDATE paciente SET rechamadas_consultorio_count = 2 WHERE cpf = '000.000.000-15';
+UPDATE paciente SET rechamadas_triagem_count = 9 WHERE cpf = '000.000.000-99';

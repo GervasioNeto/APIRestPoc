@@ -25,10 +25,15 @@ class IndicadorServiceTests {
         when(repository.countCadastrados(inicio, inicio, false)).thenReturn(3L);
         when(repository.countClassificados(inicio, inicio, false)).thenReturn(1L);
         when(repository.countAtendidos(inicio, inicio, false)).thenReturn(2L);
+        when(repository.totalRechamadas(inicio, inicio, false)).thenReturn(5L);
         var contagem = mock(IndicadorRepository.RiscoContagem.class);
         when(contagem.getTotal()).thenReturn(null);
         when(contagem.getRisco()).thenReturn(com.example.painel.enums.Risco.VERMELHO);
         when(repository.contarPorRisco(inicio, inicio, false)).thenReturn(java.util.List.of(contagem));
+        var rechamados = mock(IndicadorRepository.RiscoContagem.class);
+        when(rechamados.getTotal()).thenReturn(2L);
+        when(rechamados.getRisco()).thenReturn(com.example.painel.enums.Risco.LARANJA);
+        when(repository.contarPacientesRechamadosPorRisco(inicio, inicio, false)).thenReturn(java.util.List.of(rechamados));
         var media = mock(IndicadorRepository.TempoMedioPorRiscoTipo.class);
         when(media.getTempoMedioMinutos()).thenReturn(null);
         when(media.getRisco()).thenReturn("VERMELHO");
@@ -44,6 +49,10 @@ class IndicadorServiceTests {
         assertThat(r.percentualClassificados()).isEqualByComparingTo("33.33");
         assertThat(r.percentualAtendidos()).isEqualByComparingTo("66.67");
         assertThat(r.contagensPorRisco().get(com.example.painel.enums.Risco.VERMELHO)).isZero();
+        assertThat(r.totalRechamadas()).isEqualTo(5L);
+        assertThat(r.pacientesRechamadosPorRisco())
+                .containsEntry(com.example.painel.enums.Risco.LARANJA, 2L)
+                .containsEntry(com.example.painel.enums.Risco.VERMELHO, 0L);
         assertThat(r.porRiscoETipo()).allSatisfy(g -> {
             assertThat(g.tempoMedioEsperaMinutos()).isNull();
             assertThat(g.totalComProtocolo()).isZero();
@@ -65,6 +74,8 @@ class IndicadorServiceTests {
         assertThat(r.tempoMedioAcolhimentoMinutos()).isNull();
         assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isNull();
         assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isNull();
+        assertThat(r.totalRechamadas()).isZero();
+        assertThat(r.pacientesRechamadosPorRisco().values()).allMatch(v -> v == 0);
     }
 
     @Test void repassaTemposMediosDoEscopo() {
