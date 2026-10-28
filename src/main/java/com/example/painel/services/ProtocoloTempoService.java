@@ -1,6 +1,9 @@
 package com.example.painel.services;
 
 import com.example.painel.dto.ProtocoloTempoResponse;
+import com.example.painel.entinty.ProtocoloTempo;
+import com.example.painel.enums.Risco;
+import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.repository.ProtocoloTempoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,5 +32,41 @@ public class ProtocoloTempoService {
                 .sorted(Comparator.comparing(ProtocoloTempoResponse::tipo)
                         .thenComparingInt(p -> p.risco().getPrioridade()))
                 .toList();
+    }
+
+    /**
+     * Cadastra o protocolo padrão quando a tabela está vazia (banco novo), pra Triagem
+     * nunca ficar sem cores. Não mexe em protocolos já cadastrados, mesmo que alterados à mão.
+     * Retorna quantas linhas foram gravadas.
+     */
+    @Transactional
+    public int cadastrarProtocoloPadraoSeVazio() {
+        if (repository.count() > 0) {
+            return 0;
+        }
+        List<ProtocoloTempo> padrao = protocoloPadrao();
+        repository.saveAll(padrao);
+        return padrao.size();
+    }
+
+    // Valores confirmados com o hospital em 2026-08-21; os mesmos de docs/indicadores/schema.sql.
+    private static List<ProtocoloTempo> protocoloPadrao() {
+        return List.of(
+                protocolo(Risco.VERMELHO, TipoAtendimento.CLINICO, 0),
+                protocolo(Risco.LARANJA, TipoAtendimento.CLINICO, 10),
+                protocolo(Risco.VERMELHO, TipoAtendimento.PSIQUIATRICO, 0),
+                protocolo(Risco.LARANJA, TipoAtendimento.PSIQUIATRICO, 10),
+                protocolo(Risco.AMARELO, TipoAtendimento.PSIQUIATRICO, 60),
+                protocolo(Risco.VERDE, TipoAtendimento.PSIQUIATRICO, 120),
+                protocolo(Risco.AZUL, TipoAtendimento.PSIQUIATRICO, 240),
+                protocolo(Risco.LARANJA, TipoAtendimento.SAMU, 10));
+    }
+
+    private static ProtocoloTempo protocolo(Risco risco, TipoAtendimento tipo, int tempoMaximoMinutos) {
+        ProtocoloTempo protocolo = new ProtocoloTempo();
+        protocolo.setRisco(risco);
+        protocolo.setTipo(tipo);
+        protocolo.setTempoMaximoMinutos(tempoMaximoMinutos);
+        return protocolo;
     }
 }

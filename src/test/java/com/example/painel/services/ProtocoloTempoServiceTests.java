@@ -7,6 +7,7 @@ import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.repository.ProtocoloTempoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -14,6 +15,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -58,6 +63,37 @@ class ProtocoloTempoServiceTests {
         when(repository.findAll()).thenReturn(List.of());
 
         assertThat(service.listar()).isEmpty();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void cadastraProtocoloPadraoQuandoTabelaVazia() {
+        when(repository.count()).thenReturn(0L);
+        ArgumentCaptor<List<ProtocoloTempo>> salvos = ArgumentCaptor.forClass(List.class);
+
+        assertThat(service.cadastrarProtocoloPadraoSeVazio()).isEqualTo(8);
+
+        verify(repository).saveAll(salvos.capture());
+        assertThat(salvos.getValue())
+                .extracting(ProtocoloTempo::getRisco, ProtocoloTempo::getTipo, ProtocoloTempo::getTempoMaximoMinutos)
+                .containsExactlyInAnyOrder(
+                        tuple(Risco.VERMELHO, TipoAtendimento.CLINICO, 0),
+                        tuple(Risco.LARANJA, TipoAtendimento.CLINICO, 10),
+                        tuple(Risco.VERMELHO, TipoAtendimento.PSIQUIATRICO, 0),
+                        tuple(Risco.LARANJA, TipoAtendimento.PSIQUIATRICO, 10),
+                        tuple(Risco.AMARELO, TipoAtendimento.PSIQUIATRICO, 60),
+                        tuple(Risco.VERDE, TipoAtendimento.PSIQUIATRICO, 120),
+                        tuple(Risco.AZUL, TipoAtendimento.PSIQUIATRICO, 240),
+                        tuple(Risco.LARANJA, TipoAtendimento.SAMU, 10));
+    }
+
+    @Test
+    void naoMexeNoProtocoloJaCadastrado() {
+        when(repository.count()).thenReturn(3L);
+
+        assertThat(service.cadastrarProtocoloPadraoSeVazio()).isZero();
+
+        verify(repository, never()).saveAll(any());
     }
 
     private ProtocoloTempo protocolo(Risco risco, TipoAtendimento tipo, Integer tempoMaximoMinutos) {
