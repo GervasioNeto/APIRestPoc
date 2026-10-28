@@ -231,7 +231,6 @@ class ChamadaPainelIntegrationTests {
         ChamadaPainel chamada = new ChamadaPainel();
         chamada.setPacienteId(1L);
         chamada.setNomePaciente(nomePaciente);
-        chamada.setTicketNumber("P-0001");
         chamada.setTipo(TipoChamadaPainel.TRIAGEM);
         chamada.setDestino("Triagem");
         chamada.setCriadaEm(criadaEm);

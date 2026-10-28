@@ -74,7 +74,6 @@ class ChamadaPainelRepositoryIntegrationTests {
         ChamadaPainel chamada = new ChamadaPainel();
         chamada.setPacienteId(pacienteId);
         chamada.setNomePaciente("Paciente " + pacienteId);
-        chamada.setTicketNumber("P-0001");
         chamada.setTipo(tipo);
         chamada.setDestino(destino);
         chamada.setCriadaEm(criadaEm);

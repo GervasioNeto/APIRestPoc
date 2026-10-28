@@ -40,7 +40,6 @@ class PainelChamadasSseServiceConcurrencyTest {
                             id,
                             id,
                             "Paciente " + id,
-                            "P-000" + id,
                             "doctor",
                             "Consultorio " + id,
                             id,

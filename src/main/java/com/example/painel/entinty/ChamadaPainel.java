@@ -21,7 +21,6 @@ public class ChamadaPainel {
 
     private Long pacienteId;
     private String nomePaciente;
-    private String ticketNumber;
 
     @Enumerated(EnumType.STRING)
     private TipoChamadaPainel tipo;
@@ -64,14 +63,6 @@ public class ChamadaPainel {
 
     public void setNomePaciente(String nomePaciente) {
         this.nomePaciente = nomePaciente;
-    }
-
-    public String getTicketNumber() {
-        return ticketNumber;
-    }
-
-    public void setTicketNumber(String ticketNumber) {
-        this.ticketNumber = ticketNumber;
     }
 
     public TipoChamadaPainel getTipo() {
