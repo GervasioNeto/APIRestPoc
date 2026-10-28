@@ -1,9 +1,10 @@
 -- =====================================================================
 -- Seed de teste para o IndicadorRepository
 --
--- Popula `paciente` com dados fake cobrindo os cenários que as queries
--- de docs/indicadores precisam exercitar. Rodar manualmente no pgAdmin
--- (Query Tool, banco `painel`) -- não é executado pelo programa.
+-- Popula `protocolo_tempo` com os tempos do protocolo, `consultorio` com
+-- os consultórios 1 e 2 e `paciente` com dados fake cobrindo os cenários
+-- que as queries de docs/indicadores precisam exercitar. Rodar manualmente
+-- no pgAdmin (Query Tool, banco `painel`) -- não é executado pelo programa.
 --
 -- Janela de teste: chegada_at entre 2026-09-01 00:00 e 2026-09-03 23:59.
 -- Um paciente fica de propósito FORA dessa janela (25/08) pra confirmar
@@ -15,7 +16,55 @@
 --   countAtendidos         = 16  (os 8 pares dentro/fora de protocolo, status FINALIZADO)
 --   contarForaDoProtocoloPorRiscoETipo -> pra cada uma das 8 combinações
 --     risco/tipo de protocolo_tempo, total=2 e fora_do_prazo=1 (o segundo de cada par)
+--   GET /protocolos       = as 8 combinações abaixo
 -- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- Protocolo de tempo: mesmos valores de schema.sql (confirmados com o
+-- hospital em 2026-08-21). Os pares de pacientes abaixo foram montados
+-- em cima desses limites, então a seed garante que eles estejam no banco.
+--
+-- Atualiza o que já existe e insere o que falta, sem depender do
+-- UNIQUE (risco, tipo): quando é o Hibernate (ddl-auto) que cria a
+-- tabela, essa constraint não existe e um ON CONFLICT falharia.
+-- Este bloco pode ser rodado mais de uma vez; os INSERTs de paciente
+-- abaixo não (duplicam os pacientes de teste).
+-- ---------------------------------------------------------------------
+WITH protocolo (risco, tipo, tempo_maximo_minutos) AS (
+    VALUES
+        ('VERMELHO', 'CLINICO',      0),
+        ('LARANJA',  'CLINICO',      10),
+        ('VERMELHO', 'PSIQUIATRICO', 0),
+        ('LARANJA',  'PSIQUIATRICO', 10),
+        ('AMARELO',  'PSIQUIATRICO', 60),
+        ('VERDE',    'PSIQUIATRICO', 120),
+        ('AZUL',     'PSIQUIATRICO', 240),
+        ('LARANJA',  'SAMU',         10)
+),
+atualizados AS (
+    UPDATE protocolo_tempo pt
+    SET tempo_maximo_minutos = p.tempo_maximo_minutos
+    FROM protocolo p
+    WHERE pt.risco = p.risco AND pt.tipo = p.tipo
+    RETURNING pt.risco, pt.tipo
+)
+INSERT INTO protocolo_tempo (risco, tipo, tempo_maximo_minutos)
+SELECT p.risco, p.tipo, p.tempo_maximo_minutos
+FROM protocolo p
+WHERE NOT EXISTS (SELECT 1 FROM atualizados a WHERE a.risco = p.risco AND a.tipo = p.tipo);
+
+-- ---------------------------------------------------------------------
+-- Consultórios 1 e 2, pra tela do médico já ter onde chamar. Outros
+-- consultórios são cadastrados pelo card "Novo Consultório" do front.
+-- `numero` não tem UNIQUE, então só insere o que ainda não existe;
+-- pode ser rodado mais de uma vez. O ORDER BY faz o id seguir o número
+-- num banco vazio (o seletor de sala do front exibe o id).
+-- ---------------------------------------------------------------------
+INSERT INTO consultorio (numero)
+SELECT c.numero
+FROM (VALUES (1), (2)) AS c(numero)
+WHERE NOT EXISTS (SELECT 1 FROM consultorio existente WHERE existente.numero = c.numero)
+ORDER BY c.numero;
 
 -- ---------------------------------------------------------------------
 -- Pares "dentro do protocolo" / "fora do protocolo", um por combinação
