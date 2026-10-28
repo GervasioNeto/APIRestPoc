@@ -74,7 +74,6 @@ public class ChamadaPainelService {
         ChamadaPainel chamada = new ChamadaPainel();
         chamada.setPacienteId(paciente.getId());
         chamada.setNomePaciente(paciente.getNome());
-        chamada.setTicketNumber(gerarTicketNumber(paciente));
         chamada.setTipo(tipo);
         chamada.setRisco(paciente.getRisco());
         chamada.setCriadaEm(LocalDateTime.now());
@@ -95,7 +94,6 @@ public class ChamadaPainelService {
                 chamada.getId(),
                 chamada.getPacienteId(),
                 chamada.getNomePaciente(),
-                chamada.getTicketNumber(),
                 mapTipo(chamada.getTipo()),
                 chamada.getDestino(),
                 chamada.getConsultorioId(),
@@ -105,13 +103,6 @@ public class ChamadaPainelService {
         );
     }
 
-    private String gerarTicketNumber(Paciente paciente) {
-        if (paciente.getId() == null) {
-            return "P-0000";
-        }
-
-        return "P-%04d".formatted(paciente.getId());
-    }
 
     private String formatarDestinoConsultorio(Consultorio consultorio) {
         Long numero = consultorio.getNumero();
