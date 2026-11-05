@@ -24,6 +24,7 @@ import java.util.Optional;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -170,5 +171,30 @@ class PacienteControllerTests {
 
         verify(repository, never()).save(any());
         verifyNoInteractions(painel);
+    }
+
+    @Test
+    void anotacaoDaTriagemAcimaDe255CaracteresRetorna400ENaoGrava() throws Exception {
+        String longa = "a".repeat(Paciente.TRIAGE_NOTES_MAX_LENGTH + 1);
+
+        mvc.perform(put("/pacientes/1/classificar").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"risco\":\"VERDE\",\"tipo\":\"PSIQUIATRICO\",\"triageNotes\":\"" + longa + "\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/pacientes").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"Maria\",\"triageNotes\":\"" + longa + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void anotacaoDaTriagemNoLimiteDe255CaracteresEAceita() throws Exception {
+        String noLimite = "a".repeat(Paciente.TRIAGE_NOTES_MAX_LENGTH);
+
+        mvc.perform(put("/pacientes/1/classificar").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"risco\":\"VERDE\",\"tipo\":\"PSIQUIATRICO\",\"triageNotes\":\"" + noLimite + "\"}"))
+                .andExpect(status().isOk());
+
+        org.assertj.core.api.Assertions.assertThat(paciente.getTriageNotes()).hasSize(Paciente.TRIAGE_NOTES_MAX_LENGTH);
     }
 }

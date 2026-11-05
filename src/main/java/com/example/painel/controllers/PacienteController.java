@@ -19,7 +19,7 @@ public class PacienteController {
     private PacienteService pacienteService;
 
     @PostMapping
-    public ResponseEntity<Paciente> criar(@RequestBody Paciente paciente) {
+    public ResponseEntity<Paciente> criar(@Valid @RequestBody Paciente paciente) {
         return ResponseEntity.ok(pacienteService.criar(paciente));
     }
 
@@ -34,7 +34,7 @@ public class PacienteController {
     }
 
     @PutMapping("/{id}/classificar")
-    public ResponseEntity<Paciente> classificar(@PathVariable Long id, @RequestBody Paciente dados) {
+    public ResponseEntity<Paciente> classificar(@PathVariable Long id, @Valid @RequestBody Paciente dados) {
         return ResponseEntity.ok(pacienteService.classificar(id, dados));
     }
 

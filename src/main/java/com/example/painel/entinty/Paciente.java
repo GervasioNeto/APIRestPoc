@@ -7,6 +7,7 @@ import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -16,6 +17,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Transient;
+import jakarta.validation.constraints.Size;
 
 
 @Entity
@@ -25,8 +27,14 @@ public class Paciente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Tamanho da coluna triage_notes (VARCHAR(255)); acima disso a API responde 400 em vez de estourar no banco.
+    public static final int TRIAGE_NOTES_MAX_LENGTH = 255;
+
     private String nome;
     private String cpf;
+
+    @Size(max = TRIAGE_NOTES_MAX_LENGTH, message = "triageNotes aceita no máximo 255 caracteres")
+    @Column(length = TRIAGE_NOTES_MAX_LENGTH)
     private String triageNotes;
 
     @Enumerated(EnumType.STRING)
