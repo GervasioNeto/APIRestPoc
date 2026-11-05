@@ -187,3 +187,36 @@ UPDATE paciente SET rechamadas_triagem_count = 1 WHERE cpf = '000.000.000-03';
 UPDATE paciente SET rechamadas_consultorio_count = 2 WHERE cpf = '000.000.000-09';
 UPDATE paciente SET rechamadas_consultorio_count = 2 WHERE cpf = '000.000.000-15';
 UPDATE paciente SET rechamadas_triagem_count = 9 WHERE cpf = '000.000.000-99';
+
+-- ---------------------------------------------------------------------
+-- Chamadas no painel (BE-03), coerentes com os contadores acima: a 1ª
+-- chamada de cada tipo é a original e as seguintes são as rechamadas.
+-- GET /indicadores/atendidos devolve, por exemplo, o Paciente Teste 01
+-- com 3 rechamadas (triagem 08:03, consultório 08:07 e 08:09). Os nomes
+-- já vêm anonimizados, como o painel faz quando o atendimento termina.
+-- Os demais atendidos não têm chamadas aqui e voltam com rechamadas vazias.
+-- ---------------------------------------------------------------------
+INSERT INTO chamada_painel (paciente_id, nome_paciente, tipo, destino, risco, criada_em)
+SELECT p.id, 'Paciente Anônimo', c.tipo, c.destino, p.risco, c.criada_em
+FROM (VALUES
+    ('000.000.000-01', 'TRIAGEM',     'Triagem',       TIMESTAMP '2026-09-01 08:02:00'),
+    ('000.000.000-01', 'TRIAGEM',     'Triagem',       TIMESTAMP '2026-09-01 08:03:00'),
+    ('000.000.000-01', 'CONSULTORIO', 'Consultório 1', TIMESTAMP '2026-09-01 08:05:00'),
+    ('000.000.000-01', 'CONSULTORIO', 'Consultório 1', TIMESTAMP '2026-09-01 08:07:00'),
+    ('000.000.000-01', 'CONSULTORIO', 'Consultório 1', TIMESTAMP '2026-09-01 08:09:00'),
+    ('000.000.000-02', 'TRIAGEM',     'Triagem',       TIMESTAMP '2026-09-01 08:12:00'),
+    ('000.000.000-02', 'CONSULTORIO', 'Consultório 2', TIMESTAMP '2026-09-01 08:20:00'),
+    ('000.000.000-02', 'CONSULTORIO', 'Consultório 2', TIMESTAMP '2026-09-01 08:23:00'),
+    ('000.000.000-03', 'TRIAGEM',     'Triagem',       TIMESTAMP '2026-09-01 09:02:00'),
+    ('000.000.000-03', 'TRIAGEM',     'Triagem',       TIMESTAMP '2026-09-01 09:04:00'),
+    ('000.000.000-03', 'CONSULTORIO', 'Consultório 1', TIMESTAMP '2026-09-01 09:10:00'),
+    ('000.000.000-09', 'TRIAGEM',     'Triagem',       TIMESTAMP '2026-09-01 12:02:00'),
+    ('000.000.000-09', 'CONSULTORIO', 'Consultório 2', TIMESTAMP '2026-09-01 12:35:00'),
+    ('000.000.000-09', 'CONSULTORIO', 'Consultório 2', TIMESTAMP '2026-09-01 12:38:00'),
+    ('000.000.000-09', 'CONSULTORIO', 'Consultório 2', TIMESTAMP '2026-09-01 12:41:00'),
+    ('000.000.000-15', 'TRIAGEM',     'Triagem',       TIMESTAMP '2026-09-02 08:04:00'),
+    ('000.000.000-15', 'CONSULTORIO', 'Consultório 1', TIMESTAMP '2026-09-02 08:10:00'),
+    ('000.000.000-15', 'CONSULTORIO', 'Consultório 1', TIMESTAMP '2026-09-02 08:12:00'),
+    ('000.000.000-15', 'CONSULTORIO', 'Consultório 1', TIMESTAMP '2026-09-02 08:14:00')
+) AS c(cpf, tipo, destino, criada_em)
+JOIN paciente p ON p.cpf = c.cpf;
