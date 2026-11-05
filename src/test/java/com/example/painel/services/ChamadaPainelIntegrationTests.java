@@ -27,6 +27,7 @@ import java.util.List;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -92,6 +93,25 @@ class ChamadaPainelIntegrationTests {
         assertThat(chamada.getConsultorioNumero()).isEqualTo(3L);
         assertThat(chamada.getDestino()).isEqualTo("Consultorio 3");
         assertThat(chamada.getRisco()).isEqualTo(Risco.AMARELO);
+    }
+
+    @Test
+    void segundoConsultorioNaoConsegueChamarPacienteJaChamado() {
+        Paciente paciente = criarPacienteClassificado("Bruno Teles", Risco.AMARELO);
+        Consultorio primeiro = criarConsultorio(6L);
+        Consultorio segundo = criarConsultorio(7L);
+
+        pacienteService.chamarParaConsultorio(paciente.getId(), primeiro.getId());
+
+        assertThatThrownBy(() -> pacienteService.chamarParaConsultorio(paciente.getId(), segundo.getId()))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("409")
+                .hasMessageContaining("Paciente já foi chamado pelo Consultório 6");
+
+        assertThat(pacienteRepository.findById(paciente.getId()).orElseThrow().getConsultorio().getId())
+                .isEqualTo(primeiro.getId());
+        assertThat(chamadasDoPaciente(paciente.getId()))
+                .extracting(ChamadaPainel::getConsultorioNumero).containsExactly(6L);
     }
 
     @Test

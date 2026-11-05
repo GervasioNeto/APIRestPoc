@@ -79,6 +79,7 @@ class PacienteServiceTests {
         Consultorio consultorio = new Consultorio();
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
         when(consultorioRepository.findById(2L)).thenReturn(Optional.of(consultorio));
+        when(pacienteRepository.reservarParaConsultorio(1L, consultorio)).thenReturn(1);
         when(pacienteRepository.save(paciente)).thenReturn(paciente);
 
         pacienteService.chamarParaConsultorio(1L, 2L);
@@ -97,6 +98,8 @@ class PacienteServiceTests {
         paciente.setChamadaConsultorioAt(primeiraChamada);
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
         when(consultorioRepository.findById(2L)).thenReturn(Optional.of(consultorio));
+        // As duas reservas dão certo (ex.: o paciente voltou para a fila entre uma chamada e outra).
+        when(pacienteRepository.reservarParaConsultorio(1L, consultorio)).thenReturn(1);
         when(pacienteRepository.save(paciente)).thenReturn(paciente);
 
         pacienteService.chamarParaConsultorio(1L, 2L);
@@ -105,6 +108,29 @@ class PacienteServiceTests {
         assertThat(paciente.getChamadaConsultorioAt()).isEqualTo(primeiraChamada);
         verify(pacienteRepository, times(2)).save(paciente);
         verify(chamadaPainelService, times(2)).registrarChamadaConsultorio(paciente, consultorio);
+    }
+
+    @Test
+    void chamarPacienteJaChamadoPorOutroConsultorioRetorna409ENaoRegistraChamada() {
+        Consultorio meuConsultorio = new Consultorio();
+        Consultorio outroConsultorio = new Consultorio();
+        outroConsultorio.setNumero(3L);
+        Paciente paciente = new Paciente();
+        paciente.setConsultorio(outroConsultorio);
+        when(consultorioRepository.findById(2L)).thenReturn(Optional.of(meuConsultorio));
+        when(pacienteRepository.reservarParaConsultorio(1L, meuConsultorio)).thenReturn(0);
+        when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
+
+        assertThatThrownBy(() -> pacienteService.chamarParaConsultorio(1L, 2L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> {
+                    ResponseStatusException erro = (ResponseStatusException) e;
+                    assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(erro.getReason()).isEqualTo("Paciente já foi chamado pelo Consultório 3");
+                });
+
+        verify(pacienteRepository, never()).save(any());
+        verifyNoInteractions(chamadaPainelService);
     }
 
     @Test

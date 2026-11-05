@@ -135,10 +135,19 @@ public class PacienteService {
 
     @Transactional
     public Paciente chamarParaConsultorio(Long id, Long consultorioId) {
-        Paciente p = buscarPorId(id);
         Consultorio c = consultorioRepository.findById(consultorioId)
                 .orElseThrow(() -> new RuntimeException("Consultório não encontrado"));
 
+        // Dois médicos podem clicar quase juntos: só o primeiro reserva o paciente; o segundo recebe 409.
+        if (pacienteRepository.reservarParaConsultorio(id, c) == 0) {
+            Paciente atual = buscarPorId(id);
+            String quem = atual.getConsultorio() != null && atual.getConsultorio().getNumero() != null
+                    ? "pelo Consultório " + atual.getConsultorio().getNumero()
+                    : "por outro consultório";
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Paciente já foi chamado " + quem);
+        }
+
+        Paciente p = buscarPorId(id);
         p.setConsultorio(c);
         p.setStatus(TipoStatus.CHAMADO);
 
