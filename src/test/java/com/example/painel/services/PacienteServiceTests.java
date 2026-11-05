@@ -3,6 +3,7 @@ package com.example.painel.services;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
 import com.example.painel.entinty.ProtocoloTempo;
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
@@ -14,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -76,6 +79,7 @@ class PacienteServiceTests {
         Consultorio consultorio = new Consultorio();
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
         when(consultorioRepository.findById(2L)).thenReturn(Optional.of(consultorio));
+        when(pacienteRepository.reservarParaConsultorio(1L, consultorio)).thenReturn(1);
         when(pacienteRepository.save(paciente)).thenReturn(paciente);
 
         pacienteService.chamarParaConsultorio(1L, 2L);
@@ -94,6 +98,8 @@ class PacienteServiceTests {
         paciente.setChamadaConsultorioAt(primeiraChamada);
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
         when(consultorioRepository.findById(2L)).thenReturn(Optional.of(consultorio));
+        // As duas reservas dão certo (ex.: o paciente voltou para a fila entre uma chamada e outra).
+        when(pacienteRepository.reservarParaConsultorio(1L, consultorio)).thenReturn(1);
         when(pacienteRepository.save(paciente)).thenReturn(paciente);
 
         pacienteService.chamarParaConsultorio(1L, 2L);
@@ -102,6 +108,29 @@ class PacienteServiceTests {
         assertThat(paciente.getChamadaConsultorioAt()).isEqualTo(primeiraChamada);
         verify(pacienteRepository, times(2)).save(paciente);
         verify(chamadaPainelService, times(2)).registrarChamadaConsultorio(paciente, consultorio);
+    }
+
+    @Test
+    void chamarPacienteJaChamadoPorOutroConsultorioRetorna409ENaoRegistraChamada() {
+        Consultorio meuConsultorio = new Consultorio();
+        Consultorio outroConsultorio = new Consultorio();
+        outroConsultorio.setNumero(3L);
+        Paciente paciente = new Paciente();
+        paciente.setConsultorio(outroConsultorio);
+        when(consultorioRepository.findById(2L)).thenReturn(Optional.of(meuConsultorio));
+        when(pacienteRepository.reservarParaConsultorio(1L, meuConsultorio)).thenReturn(0);
+        when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
+
+        assertThatThrownBy(() -> pacienteService.chamarParaConsultorio(1L, 2L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> {
+                    ResponseStatusException erro = (ResponseStatusException) e;
+                    assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(erro.getReason()).isEqualTo("Paciente já foi chamado pelo Consultório 3");
+                });
+
+        verify(pacienteRepository, never()).save(any());
+        verifyNoInteractions(chamadaPainelService);
     }
 
     @Test
@@ -281,12 +310,22 @@ class PacienteServiceTests {
         paciente.setNome("Maria Silva");
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
 
-        pacienteService.finalizarAtendimento(1L);
+        pacienteService.finalizarAtendimento(1L, ComportamentoSuicida.IDEACAO);
 
         assertThat(paciente.getStatus()).isEqualTo(TipoStatus.FINALIZADO);
         assertThat(paciente.getNome()).isEqualTo("Paciente Anônimo");
+        assertThat(paciente.getComportamentoSuicida()).isEqualTo(ComportamentoSuicida.IDEACAO);
         verify(pacienteRepository).save(paciente);
         verify(chamadaPainelService).anonimizarChamadasDoPaciente(1L, "Paciente Anônimo");
+    }
+
+    @Test
+    void finalizarAtendimentoSemAvaliacaoDeSuicidioERecusado() {
+        assertThatThrownBy(() -> pacienteService.finalizarAtendimento(1L, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verifyNoInteractions(pacienteRepository, chamadaPainelService);
     }
 
     @Test

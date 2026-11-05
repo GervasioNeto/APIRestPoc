@@ -5,6 +5,7 @@ import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.ChamadaPainel;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoChamadaPainel;
@@ -26,6 +27,7 @@ import java.util.List;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -94,6 +96,25 @@ class ChamadaPainelIntegrationTests {
     }
 
     @Test
+    void segundoConsultorioNaoConsegueChamarPacienteJaChamado() {
+        Paciente paciente = criarPacienteClassificado("Bruno Teles", Risco.AMARELO);
+        Consultorio primeiro = criarConsultorio(6L);
+        Consultorio segundo = criarConsultorio(7L);
+
+        pacienteService.chamarParaConsultorio(paciente.getId(), primeiro.getId());
+
+        assertThatThrownBy(() -> pacienteService.chamarParaConsultorio(paciente.getId(), segundo.getId()))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("409")
+                .hasMessageContaining("Paciente já foi chamado pelo Consultório 6");
+
+        assertThat(pacienteRepository.findById(paciente.getId()).orElseThrow().getConsultorio().getId())
+                .isEqualTo(primeiro.getId());
+        assertThat(chamadasDoPaciente(paciente.getId()))
+                .extracting(ChamadaPainel::getConsultorioNumero).containsExactly(6L);
+    }
+
+    @Test
     void rechamadaCriaNovoRegistroParaOMesmoPaciente() {
         Paciente paciente = criarPacienteClassificado("Ana Lima", Risco.VERDE);
         Consultorio consultorio = criarConsultorio(2L);
@@ -156,8 +177,10 @@ class ChamadaPainelIntegrationTests {
         pacienteService.chamarParaConsultorio(paciente.getId(), consultorio.getId());
         pacienteService.rechamarPaciente(paciente.getId());
 
-        pacienteService.finalizarAtendimento(paciente.getId());
+        pacienteService.finalizarAtendimento(paciente.getId(), ComportamentoSuicida.TENTATIVA);
 
+        assertThat(pacienteRepository.findById(paciente.getId()).orElseThrow().getComportamentoSuicida())
+                .isEqualTo(ComportamentoSuicida.TENTATIVA);
         assertChamadasAnonimizadas(paciente.getId(), 3, "Pedro Alves");
         assertThat(chamadasDoPaciente(outro.getId()))
                 .extracting(ChamadaPainel::getNomePaciente).containsExactly("Lucia Rocha");

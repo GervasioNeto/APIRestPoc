@@ -52,7 +52,10 @@ CREATE TABLE paciente (
 
     -- Contadores incrementados pelos respectivos métodos de rechamada no service.
     rechamadas_triagem_count        INTEGER NOT NULL DEFAULT 0,  -- quantas vezes foi rechamado no acolhimento/triagem
-    rechamadas_consultorio_count    INTEGER NOT NULL DEFAULT 0   -- quantas vezes foi rechamado no consultório
+    rechamadas_consultorio_count    INTEGER NOT NULL DEFAULT 0,  -- quantas vezes foi rechamado no consultório
+
+    -- Avaliação obrigatória do médico ao finalizar a consulta (nula em desistência).
+    comportamento_suicida           VARCHAR(255)  -- NENHUM, IDEACAO, TENTATIVA
 );
 
 CREATE INDEX idx_paciente_chegada_at ON paciente (chegada_at);

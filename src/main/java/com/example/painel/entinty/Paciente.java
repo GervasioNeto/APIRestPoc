@@ -2,10 +2,12 @@ package com.example.painel.entinty;
 
 import java.time.LocalDateTime;
 
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -15,6 +17,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Transient;
+import jakarta.validation.constraints.Size;
 
 
 @Entity
@@ -24,8 +27,14 @@ public class Paciente {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Tamanho da coluna triage_notes (VARCHAR(255)); acima disso a API responde 400 em vez de estourar no banco.
+    public static final int TRIAGE_NOTES_MAX_LENGTH = 255;
+
     private String nome;
     private String cpf;
+
+    @Size(max = TRIAGE_NOTES_MAX_LENGTH, message = "triageNotes aceita no máximo 255 caracteres")
+    @Column(length = TRIAGE_NOTES_MAX_LENGTH)
     private String triageNotes;
 
     @Enumerated(EnumType.STRING)
@@ -61,6 +70,10 @@ public class Paciente {
     private Integer rechamadasTriagemCount = 0;
 
     private Integer rechamadasConsultorioCount = 0;
+
+    // Avaliação do médico ao finalizar a consulta; nula enquanto não houve consulta (ou em desistência).
+    @Enumerated(EnumType.STRING)
+    private ComportamentoSuicida comportamentoSuicida;
 
     // Calculado na fila do médico (classifiedAt + protocolo_tempo); não é persistido.
     @Transient
@@ -168,6 +181,10 @@ public class Paciente {
     public Integer getRechamadasConsultorioCount() { return rechamadasConsultorioCount; }
 
     public void setRechamadasConsultorioCount(Integer rechamadasConsultorioCount) { this.rechamadasConsultorioCount = rechamadasConsultorioCount; }
+
+    public ComportamentoSuicida getComportamentoSuicida() { return comportamentoSuicida; }
+
+    public void setComportamentoSuicida(ComportamentoSuicida comportamentoSuicida) { this.comportamentoSuicida = comportamentoSuicida; }
 
     public LocalDateTime getPrazoAtendimentoAt() { return prazoAtendimentoAt; }
 

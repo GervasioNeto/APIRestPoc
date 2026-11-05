@@ -1,8 +1,10 @@
 package com.example.painel.controllers;
 
+import com.example.painel.dto.FinalizarAtendimentoRequest;
 import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.Paciente;
 import com.example.painel.services.PacienteService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +19,7 @@ public class PacienteController {
     private PacienteService pacienteService;
 
     @PostMapping
-    public ResponseEntity<Paciente> criar(@RequestBody Paciente paciente) {
+    public ResponseEntity<Paciente> criar(@Valid @RequestBody Paciente paciente) {
         return ResponseEntity.ok(pacienteService.criar(paciente));
     }
 
@@ -32,7 +34,7 @@ public class PacienteController {
     }
 
     @PutMapping("/{id}/classificar")
-    public ResponseEntity<Paciente> classificar(@PathVariable Long id, @RequestBody Paciente dados) {
+    public ResponseEntity<Paciente> classificar(@PathVariable Long id, @Valid @RequestBody Paciente dados) {
         return ResponseEntity.ok(pacienteService.classificar(id, dados));
     }
 
@@ -57,9 +59,10 @@ public class PacienteController {
         return ResponseEntity.noContent().build();
     }
 
+    // Corpo obrigatório: { "comportamentoSuicida": "NENHUM" | "IDEACAO" | "TENTATIVA" }; sem ele, 400.
     @PutMapping("/{id}/finalizar")
-    public ResponseEntity<Void> finalizar(@PathVariable Long id) {
-        pacienteService.finalizarAtendimento(id);
+    public ResponseEntity<Void> finalizar(@PathVariable Long id, @Valid @RequestBody FinalizarAtendimentoRequest request) {
+        pacienteService.finalizarAtendimento(id, request.comportamentoSuicida());
         return ResponseEntity.noContent().build();
     }
 
