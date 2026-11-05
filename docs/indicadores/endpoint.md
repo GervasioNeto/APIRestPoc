@@ -76,6 +76,35 @@ exclui SAMU. Antes, os totais misturavam todos os tipos. O seed e o script SQL
 histórico de verificação representam os dados sem filtro; seus totais
 combinados não são a expectativa do novo padrão GERAL.
 
+## GET /indicadores/atendidos (BE-03)
+
+Lista dos atendidos (`status = FINALIZADO`) com os mesmos parâmetros, período
+(`chegadaAt`), escopo e respostas 400 do `GET /indicadores`. É a mesma
+população do campo `atendidos`, ordenada pela 1ª chamada ao consultório.
+
+```http
+GET /indicadores/atendidos?inicio=2026-09-01T00:00:00&fim=2026-09-03T23:59:59&escopo=GERAL
+```
+
+```json
+[{
+  "pacienteId": 1, "risco": "VERMELHO", "tipo": "CLINICO",
+  "chamadaConsultorioAt": "2026-09-01T08:05:00",
+  "rechamadas": [
+    {"tipo": "TRIAGEM", "criadaEm": "2026-09-01T08:03:00"},
+    {"tipo": "CONSULTORIO", "criadaEm": "2026-09-01T08:07:00"}
+  ]
+}]
+```
+
+As rechamadas vêm de `chamada_painel`: a 1ª chamada de cada tipo é a original e
+as seguintes são rechamadas, em ordem de horário (uma consulta só para a lista
+toda). A faixa de hora é filtrada no front, sobre `chamadaConsultorioAt`.
+
+Sem nome nem CPF: o painel anonimiza o paciente quando o atendimento termina,
+então todo atendido já é "Paciente Anônimo". Mostrar o nome exigiria guardá-lo
+depois do fim do atendimento, o que vai contra a anonimização.
+
 ## Tempos médios (indicadores 1-3)
 
 Três campos `Double`, em minutos, logo após `percentualAtendidos`:
@@ -129,6 +158,10 @@ e os demais de 2 min, para que o indicador 1 diferencie os escopos.
 
 A única desistência do seed é o "Paciente Anônimo" (Clínico, desistiu aguardando
 o médico): aparece no GERAL e não aparece no SAMU.
+
+`GET /indicadores/atendidos` devolve 14 atendidos no GERAL e 2 no SAMU. As
+chamadas do seed somam 7 rechamadas no GERAL e 2 no SAMU, iguais a
+`totalRechamadas`.
 
 ## Testes isolados
 
@@ -188,3 +221,7 @@ em cima do IND-08 (commit da Amanda trazido para esta branch). Mesmo filtro de
 período e escopo das demais queries. Testes unitários e de controller
 aprovados; os de integração (Testcontainers) precisam de Docker para rodar.
 Conferido via HTTP contra o seed num PostgreSQL local.
+
+BE-03: `GET /indicadores/atendidos` com horário da chamada, risco, tipo e
+horários das rechamadas vindos de `chamada_painel`, sem dados pessoais. Seed
+ganhou as chamadas no painel coerentes com os contadores de rechamada.

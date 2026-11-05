@@ -2,6 +2,7 @@ package com.example.painel.repository;
 
 import com.example.painel.entinty.Paciente;
 import com.example.painel.enums.Risco;
+import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -112,7 +113,22 @@ public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
             "GROUP BY p.risco, p.tipo")
     List<ForaDoProtocoloPorRiscoTipo> contarForaDoProtocoloPorRiscoETipo(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
 
+    // ---- Atendidos por horário (BE-03) ----
+
+    // Mesma população de countAtendidos; só colunas sem dados pessoais.
+    @Query("SELECT p.id AS id, p.risco AS risco, p.tipo AS tipo, p.chamadaConsultorioAt AS chamadaConsultorioAt " +
+            "FROM Paciente p WHERE p.status = 'FINALIZADO' AND p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO +
+            "ORDER BY p.chamadaConsultorioAt, p.id")
+    List<AtendidoResumo> listarAtendidos(@Param("inicio") LocalDateTime inicio, @Param("fim") LocalDateTime fim, @Param("samu") boolean samu);
+
     // ---- Projections ----
+
+    interface AtendidoResumo {
+        Long getId();
+        Risco getRisco();
+        TipoAtendimento getTipo();
+        LocalDateTime getChamadaConsultorioAt();
+    }
 
     interface TemposMedios {
         Double getAcolhimentoMinutos();
