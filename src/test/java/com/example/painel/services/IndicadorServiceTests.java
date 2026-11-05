@@ -1,5 +1,7 @@
 package com.example.painel.services;
 
+import com.example.painel.enums.Risco;
+import com.example.painel.enums.TipoStatus;
 import com.example.painel.repository.IndicadorRepository;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
@@ -25,10 +27,15 @@ class IndicadorServiceTests {
         when(repository.countCadastrados(inicio, inicio, false)).thenReturn(3L);
         when(repository.countClassificados(inicio, inicio, false)).thenReturn(1L);
         when(repository.countAtendidos(inicio, inicio, false)).thenReturn(2L);
+        when(repository.totalRechamadas(inicio, inicio, false)).thenReturn(5L);
         var contagem = mock(IndicadorRepository.RiscoContagem.class);
         when(contagem.getTotal()).thenReturn(null);
         when(contagem.getRisco()).thenReturn(com.example.painel.enums.Risco.VERMELHO);
         when(repository.contarPorRisco(inicio, inicio, false)).thenReturn(java.util.List.of(contagem));
+        var rechamados = mock(IndicadorRepository.RiscoContagem.class);
+        when(rechamados.getTotal()).thenReturn(2L);
+        when(rechamados.getRisco()).thenReturn(com.example.painel.enums.Risco.LARANJA);
+        when(repository.contarPacientesRechamadosPorRisco(inicio, inicio, false)).thenReturn(java.util.List.of(rechamados));
         var media = mock(IndicadorRepository.TempoMedioPorRiscoTipo.class);
         when(media.getTempoMedioMinutos()).thenReturn(null);
         when(media.getRisco()).thenReturn("VERMELHO");
@@ -44,6 +51,10 @@ class IndicadorServiceTests {
         assertThat(r.percentualClassificados()).isEqualByComparingTo("33.33");
         assertThat(r.percentualAtendidos()).isEqualByComparingTo("66.67");
         assertThat(r.contagensPorRisco().get(com.example.painel.enums.Risco.VERMELHO)).isZero();
+        assertThat(r.totalRechamadas()).isEqualTo(5L);
+        assertThat(r.pacientesRechamadosPorRisco())
+                .containsEntry(com.example.painel.enums.Risco.LARANJA, 2L)
+                .containsEntry(com.example.painel.enums.Risco.VERMELHO, 0L);
         assertThat(r.porRiscoETipo()).allSatisfy(g -> {
             assertThat(g.tempoMedioEsperaMinutos()).isNull();
             assertThat(g.totalComProtocolo()).isZero();
@@ -65,6 +76,40 @@ class IndicadorServiceTests {
         assertThat(r.tempoMedioAcolhimentoMinutos()).isNull();
         assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isNull();
         assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isNull();
+        assertThat(r.totalRechamadas()).isZero();
+        assertThat(r.rechamadasPorRisco().values()).allMatch(v -> v == 0);
+        assertThat(r.pacientesRechamadosPorRisco().values()).allMatch(v -> v == 0);
+        assertThat(r.totalDesistencias()).isZero();
+        assertThat(r.desistenciasPorEtapa()).containsOnlyKeys(TipoStatus.AGUARDANDO_TRIAGEM,
+                TipoStatus.CHAMADO, TipoStatus.AGUARDANDO_CONSULTA).allSatisfy((etapa, total) -> assertThat(total).isZero());
+    }
+
+    @Test void agrupaDesistenciasPorEtapaESomaRechamadasPorRisco() {
+        var repository = mock(IndicadorRepository.class);
+        var service = new IndicadorService(repository);
+        var inicio = LocalDateTime.of(2026, 9, 1, 0, 0);
+        var antesDaTriagem = etapa(TipoStatus.AGUARDANDO_TRIAGEM, 2L);
+        var aguardandoMedico = etapa(TipoStatus.AGUARDANDO_CONSULTA, 1L);
+        var semEtapa = etapa(null, 1L);
+        when(repository.contarDesistenciasPorEtapa(inicio, inicio, false))
+                .thenReturn(java.util.List.of(antesDaTriagem, aguardandoMedico, semEtapa));
+        var vermelho = mock(IndicadorRepository.RiscoContagem.class);
+        when(vermelho.getRisco()).thenReturn(Risco.VERMELHO);
+        when(vermelho.getTotal()).thenReturn(4L);
+        when(repository.somarRechamadasPorRisco(inicio, inicio, false)).thenReturn(java.util.List.of(vermelho));
+        var r = service.consultarIndicadores(inicio, inicio);
+        // Registro sem etapa entra no total, mas não em nenhuma etapa.
+        assertThat(r.totalDesistencias()).isEqualTo(4);
+        assertThat(r.desistenciasPorEtapa()).containsEntry(TipoStatus.AGUARDANDO_TRIAGEM, 2L)
+                .containsEntry(TipoStatus.CHAMADO, 0L).containsEntry(TipoStatus.AGUARDANDO_CONSULTA, 1L);
+        assertThat(r.rechamadasPorRisco()).containsEntry(Risco.VERMELHO, 4L).containsEntry(Risco.LARANJA, 0L);
+    }
+
+    private static IndicadorRepository.EtapaContagem etapa(TipoStatus etapa, Long total) {
+        var contagem = mock(IndicadorRepository.EtapaContagem.class);
+        when(contagem.getEtapa()).thenReturn(etapa);
+        when(contagem.getTotal()).thenReturn(total);
+        return contagem;
     }
 
     @Test void repassaTemposMediosDoEscopo() {

@@ -22,12 +22,43 @@ HTTP 200 para consultas válidas, inclusive sem registros. HTTP 400 para escopo
 inválido, datas malformadas, datas ausentes ou início posterior ao fim.
 Erros internos de banco não são convertidos em erros de validação.
 
-## Contrato preservado
+## Contrato e bloco de rechamadas (IND-08)
 
-O filtro de escopo não alterou o contrato `IndicadoresResponse`. Mantém as 15
-combinações de risco/tipo no detalhamento; combinações excluídas pelo escopo têm
-contagens e percentuais zero e média null. O filtro acontece em todas as queries,
-antes das agregações; não se carregam pacientes para filtrar em memória.
+Além dos indicadores anteriores, `IndicadoresResponse` expõe dois campos
+calculados exclusivamente no backend:
+
+- `totalRechamadas`: soma de `rechamadasTriagemCount` e
+  `rechamadasConsultorioCount` dos pacientes no período e escopo;
+- `pacientesRechamadosPorRisco`: quantidade de pacientes distintos com pelo
+  menos uma rechamada em cada nível de risco. O mapa sempre contém todos os
+  valores de `Risco`, usando zero quando não há pacientes.
+- `rechamadasPorRisco` (BE-02): a mesma soma de `totalRechamadas`, quebrada
+  por nível de risco. Também contém todos os valores de `Risco`.
+
+## Desistências reais (BE-02)
+
+- `totalDesistencias`: pacientes com `status = DESISTENCIA` no período e escopo;
+- `desistenciasPorEtapa`: esses pacientes agrupados por `etapaDesistencia`, o
+  status em que estavam ao desistir. Sempre traz `AGUARDANDO_TRIAGEM`,
+  `CHAMADO` e `AGUARDANDO_CONSULTA`, com zero quando não há casos. Registros
+  legados sem etapa entram só no total.
+
+A conta antiga do HTML (cadastrados − classificados) tratava como desistente
+quem ainda está na fila; aqui só conta quem teve a desistência registrada.
+Quem desiste antes da triagem não tem tipo: conta no GERAL e nunca no SAMU,
+pela mesma regra de tipo nulo do escopo.
+
+`CHAMADO` aparece tanto na chamada para a triagem quanto na chamada para o
+consultório, então essa etapa não diz sozinha em qual das duas o paciente estava.
+
+Contadores nulos de registros legados valem zero. O frontend deve consumir
+esses campos diretamente e não persistir ou recalcular rechamadas em
+`localStorage`.
+
+As 15 combinações de risco/tipo permanecem no detalhamento; combinações
+excluídas pelo escopo têm contagens e percentuais zero e média null. O filtro
+acontece nas queries, antes das agregações; não se carregam pacientes para
+filtrar em memória.
 
 As regras de status continuam individuais: cadastrados não filtra status;
 classificados exige `classifiedAt`; atendidos exige `FINALIZADO`; contagens por
@@ -78,6 +109,15 @@ Período de 2026-09-01T00:00:00 a 2026-09-03T23:59:59:
 | tempoMedioClassificacaoAteMedicoMinutos | 57.5 | 12.5 |
 | tempoMedioEntradaAteMedicoMinutos | 62.5 | 17.5 |
 | contagensPorRisco.LARANJA | 5 | 2 |
+| totalRechamadas | 7 | 2 |
+| pacientesRechamadosPorRisco.VERMELHO | 2 | 0 |
+| pacientesRechamadosPorRisco.LARANJA | 1 | 1 |
+| pacientesRechamadosPorRisco.AMARELO | 1 | 0 |
+| rechamadasPorRisco.VERMELHO | 4 | 0 |
+| rechamadasPorRisco.LARANJA | 1 | 2 |
+| rechamadasPorRisco.AMARELO | 2 | 0 |
+| totalDesistencias | 1 | 0 |
+| desistenciasPorEtapa.AGUARDANDO_CONSULTA | 1 | 0 |
 
 SAMU/LARANJA: média 12.5 minutos, totalComProtocolo=2, foraDoPrazo=1,
 percentualForaDoPrazo=50.00. Em GERAL, os grupos SAMU ficam vazios; no escopo
@@ -86,6 +126,9 @@ SAMU, os grupos CLINICO e PSIQUIATRICO ficam vazios.
 No indicador 1, GERAL tem 17 amostras (inclui aguardando consulta e a
 desistência) e SAMU tem 2. Os 2 pacientes SAMU do seed têm acolhimento de 4 min
 e os demais de 2 min, para que o indicador 1 diferencie os escopos.
+
+A única desistência do seed é o "Paciente Anônimo" (Clínico, desistiu aguardando
+o médico): aparece no GERAL e não aparece no SAMU.
 
 ## Testes isolados
 
@@ -128,3 +171,20 @@ Corrigido o comentário do `schema.sql`, que citava um filtro global de status
 que nenhuma query aplica. Validação: 24 testes de indicadores e suíte completa
 (56) aprovados, com PostgreSQL isolado via Testcontainers. O consumo dos três
 campos no frontend continua pendente.
+
+## Registro da entrega - 26/10/2026
+
+Implementado o IND-08 no `GET /indicadores`: total de rechamadas e pacientes
+rechamados por nível de risco, ambos filtrados por período e pelo escopo
+GERAL/SAMU. Os valores são agregados no PostgreSQL e o frontend não precisa de
+`localStorage`. O seed cobre rechamadas de triagem e consultório, múltiplas
+rechamadas do mesmo paciente, registros nulos legados, escopo e período.
+
+## Registro da entrega - 05/11/2026
+
+BE-02: desistências reais por etapa (`totalDesistencias`,
+`desistenciasPorEtapa`) e soma de rechamadas por risco (`rechamadasPorRisco`),
+em cima do IND-08 (commit da Amanda trazido para esta branch). Mesmo filtro de
+período e escopo das demais queries. Testes unitários e de controller
+aprovados; os de integração (Testcontainers) precisam de Docker para rodar.
+Conferido via HTTP contra o seed num PostgreSQL local.

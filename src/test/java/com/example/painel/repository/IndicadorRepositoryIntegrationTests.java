@@ -258,6 +258,108 @@ class IndicadorRepositoryIntegrationTests {
         assertThat(tempos.getEntradaAteMedicoMinutos()).isNull();
     }
 
+    @Test
+    @DisplayName("IND-08: soma rechamadas e conta pacientes distintos por risco, período e escopo")
+    void deveCalcularRechamadasPorRiscoEPorEscopo() {
+        Paciente geral = criarPaciente("Geral", TipoStatus.FINALIZADO, Risco.VERMELHO,
+                TipoAtendimento.CLINICO, inicioJanela.plusHours(1), inicioJanela.plusHours(1), null);
+        geral.setRechamadasTriagemCount(2);
+        geral.setRechamadasConsultorioCount(3);
+        pacienteRepository.save(geral);
+
+        Paciente samu = criarPaciente("SAMU", TipoStatus.FINALIZADO, Risco.LARANJA,
+                TipoAtendimento.SAMU, inicioJanela.plusHours(2), inicioJanela.plusHours(2), null);
+        samu.setRechamadasTriagemCount(null);
+        samu.setRechamadasConsultorioCount(4);
+        pacienteRepository.save(samu);
+
+        Paciente semRechamada = criarPaciente("Sem rechamada", TipoStatus.FINALIZADO, Risco.AMARELO,
+                TipoAtendimento.CLINICO, inicioJanela.plusHours(3), inicioJanela.plusHours(3), null);
+        pacienteRepository.save(semRechamada);
+
+        Paciente fora = criarPaciente("Fora", TipoStatus.FINALIZADO, Risco.AZUL,
+                TipoAtendimento.CLINICO, inicioJanela.minusDays(1), inicioJanela.minusDays(1), null);
+        fora.setRechamadasTriagemCount(10);
+        pacienteRepository.save(fora);
+        entityManager.flush();
+
+        assertThat(indicadorRepository.totalRechamadas(inicioJanela, fimJanela, false)).isEqualTo(5);
+        assertThat(indicadorRepository.contarPacientesRechamadosPorRisco(inicioJanela, fimJanela, false))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.getRisco()).isEqualTo(Risco.VERMELHO);
+                    assertThat(item.getTotal()).isEqualTo(1);
+                });
+        assertThat(indicadorRepository.totalRechamadas(inicioJanela, fimJanela, true)).isEqualTo(4);
+        assertThat(indicadorRepository.contarPacientesRechamadosPorRisco(inicioJanela, fimJanela, true))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.getRisco()).isEqualTo(Risco.LARANJA);
+                    assertThat(item.getTotal()).isEqualTo(1);
+                });
+    }
+
+    @Test
+    @DisplayName("BE-02: conta só status DESISTENCIA por etapa; sem tipo conta no GERAL e nunca no SAMU")
+    void deveContarDesistenciasPorEtapaEPorEscopo() {
+        // Desistiu antes da triagem: sem risco e sem tipo.
+        Paciente antesDaTriagem = criarPaciente("Antes da triagem", TipoStatus.DESISTENCIA, null,
+                null, inicioJanela.plusHours(1), null, null);
+        antesDaTriagem.setEtapaDesistencia(TipoStatus.AGUARDANDO_TRIAGEM);
+        pacienteRepository.save(antesDaTriagem);
+
+        Paciente clinico = criarPaciente("Clínico", TipoStatus.DESISTENCIA, Risco.LARANJA,
+                TipoAtendimento.CLINICO, inicioJanela.plusHours(2), inicioJanela.plusHours(2), null);
+        clinico.setEtapaDesistencia(TipoStatus.AGUARDANDO_CONSULTA);
+        pacienteRepository.save(clinico);
+
+        Paciente samu = criarPaciente("SAMU", TipoStatus.DESISTENCIA, Risco.LARANJA,
+                TipoAtendimento.SAMU, inicioJanela.plusHours(3), inicioJanela.plusHours(3), null);
+        samu.setEtapaDesistencia(TipoStatus.AGUARDANDO_CONSULTA);
+        pacienteRepository.save(samu);
+
+        // Ainda na fila: a conta antiga (cadastrados - classificados) trataria como desistente.
+        pacienteRepository.save(criarPaciente("Na fila", TipoStatus.AGUARDANDO_TRIAGEM, null,
+                null, inicioJanela.plusHours(4), null, null));
+
+        Paciente fora = criarPaciente("Fora", TipoStatus.DESISTENCIA, null,
+                null, inicioJanela.minusDays(1), null, null);
+        fora.setEtapaDesistencia(TipoStatus.AGUARDANDO_TRIAGEM);
+        pacienteRepository.save(fora);
+        entityManager.flush();
+
+        assertThat(indicadorRepository.contarDesistenciasPorEtapa(inicioJanela, fimJanela, false))
+                .extracting(IndicadorRepository.EtapaContagem::getEtapa, IndicadorRepository.EtapaContagem::getTotal)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple(TipoStatus.AGUARDANDO_TRIAGEM, 1L),
+                        org.assertj.core.groups.Tuple.tuple(TipoStatus.AGUARDANDO_CONSULTA, 1L));
+        assertThat(indicadorRepository.contarDesistenciasPorEtapa(inicioJanela, fimJanela, true))
+                .extracting(IndicadorRepository.EtapaContagem::getEtapa, IndicadorRepository.EtapaContagem::getTotal)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(TipoStatus.AGUARDANDO_CONSULTA, 1L));
+    }
+
+    @Test
+    @DisplayName("BE-02: soma as rechamadas de triagem e consultório por risco")
+    void deveSomarRechamadasPorRisco() {
+        Paciente vermelho = criarPaciente("Vermelho", TipoStatus.FINALIZADO, Risco.VERMELHO,
+                TipoAtendimento.CLINICO, inicioJanela.plusHours(1), inicioJanela.plusHours(1), null);
+        vermelho.setRechamadasTriagemCount(2);
+        vermelho.setRechamadasConsultorioCount(3);
+        pacienteRepository.save(vermelho);
+
+        Paciente outroVermelho = criarPaciente("Outro vermelho", TipoStatus.FINALIZADO, Risco.VERMELHO,
+                TipoAtendimento.PSIQUIATRICO, inicioJanela.plusHours(2), inicioJanela.plusHours(2), null);
+        outroVermelho.setRechamadasTriagemCount(null);
+        outroVermelho.setRechamadasConsultorioCount(1);
+        pacienteRepository.save(outroVermelho);
+        entityManager.flush();
+
+        assertThat(indicadorRepository.somarRechamadasPorRisco(inicioJanela, fimJanela, false))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.getRisco()).isEqualTo(Risco.VERMELHO);
+                    assertThat(item.getTotal()).isEqualTo(6);
+                });
+        assertThat(indicadorRepository.somarRechamadasPorRisco(inicioJanela, fimJanela, true)).isEmpty();
+    }
+
     private Paciente criarPaciente(String nome,
                                    TipoStatus status,
                                    Risco risco,

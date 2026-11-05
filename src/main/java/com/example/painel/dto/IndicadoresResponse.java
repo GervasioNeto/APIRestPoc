@@ -2,6 +2,7 @@ package com.example.painel.dto;
 
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
+import com.example.painel.enums.TipoStatus;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,12 @@ import java.util.Map;
  * Tempos 1-3 usam a 1ª chamada no painel (inclui quem foi chamado e não
  * compareceu) e consideram quem tem as duas datas, sem filtro de status.
  * Contagens por risco seguem a query (incluem NAO_CLASSIFICADO).
+ * totalRechamadas soma as rechamadas de triagem e consultório. O mapa de
+ * pacientes rechamados conta cada paciente uma vez no respectivo risco;
+ * rechamadasPorRisco soma as rechamadas de cada risco.
+ * Desistências contam só status DESISTENCIA, agrupadas pela etapa em que o
+ * paciente estava (AGUARDANDO_TRIAGEM, CHAMADO ou AGUARDANDO_CONSULTA, sempre
+ * presentes); totalDesistencias inclui também registros sem etapa.
  * Detalhamento contém as 15 combinações das cinco cores com os três tipos.
  * Médias em minutos, sem arredondamento adicional; null significa sem amostras,
  * enquanto 0.0 representa espera média zero. Percentuais de 0 a 100, com duas
@@ -28,6 +35,11 @@ public record IndicadoresResponse(
         Double tempoMedioClassificacaoAteMedicoMinutos,
         Double tempoMedioEntradaAteMedicoMinutos,
         Map<Risco, Long> contagensPorRisco,
+        long totalDesistencias,
+        Map<TipoStatus, Long> desistenciasPorEtapa,
+        long totalRechamadas,
+        Map<Risco, Long> rechamadasPorRisco,
+        Map<Risco, Long> pacientesRechamadosPorRisco,
         List<Detalhamento> porRiscoETipo
 ) {
     public record Detalhamento(
