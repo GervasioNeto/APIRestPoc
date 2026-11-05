@@ -5,6 +5,7 @@ import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.ChamadaPainel;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoChamadaPainel;
@@ -156,8 +157,10 @@ class ChamadaPainelIntegrationTests {
         pacienteService.chamarParaConsultorio(paciente.getId(), consultorio.getId());
         pacienteService.rechamarPaciente(paciente.getId());
 
-        pacienteService.finalizarAtendimento(paciente.getId());
+        pacienteService.finalizarAtendimento(paciente.getId(), ComportamentoSuicida.TENTATIVA);
 
+        assertThat(pacienteRepository.findById(paciente.getId()).orElseThrow().getComportamentoSuicida())
+                .isEqualTo(ComportamentoSuicida.TENTATIVA);
         assertChamadasAnonimizadas(paciente.getId(), 3, "Pedro Alves");
         assertThat(chamadasDoPaciente(outro.getId()))
                 .extracting(ChamadaPainel::getNomePaciente).containsExactly("Lucia Rocha");

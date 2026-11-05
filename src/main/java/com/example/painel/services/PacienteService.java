@@ -4,6 +4,7 @@ import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
 import com.example.painel.entinty.ProtocoloTempo;
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
@@ -151,11 +152,19 @@ public class PacienteService {
         return salvo;
     }
 
+    // A avaliação de ideação/tentativa de suicídio é obrigatória para finalizar. Ela sobrevive à
+    // anonimização (que só remove nome, CPF e notas) porque alimenta os indicadores.
     @Transactional
-    public void finalizarAtendimento(Long id) {
+    public void finalizarAtendimento(Long id, ComportamentoSuicida comportamentoSuicida) {
+        if (comportamentoSuicida == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "comportamentoSuicida é obrigatório para finalizar a consulta");
+        }
+
         Paciente p = buscarPorId(id);
         p.setStatus(TipoStatus.FINALIZADO);
         p.setAtendimentoFinalizadoAt(LocalDateTime.now());
+        p.setComportamentoSuicida(comportamentoSuicida);
         anonimizar(p);
         pacienteRepository.save(p);
         chamadaPainelService.anonimizarChamadasDoPaciente(p.getId(), NOME_ANONIMO);

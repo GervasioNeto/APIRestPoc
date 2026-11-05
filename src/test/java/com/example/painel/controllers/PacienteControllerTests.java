@@ -3,6 +3,7 @@ package com.example.painel.controllers;
 import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.Paciente;
 import com.example.painel.entinty.ProtocoloTempo;
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
@@ -12,6 +13,7 @@ import com.example.painel.services.ChamadaPainelService;
 import com.example.painel.services.PacienteService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -142,5 +144,31 @@ class PacienteControllerTests {
                 .andExpect(jsonPath("$[1]").value(org.hamcrest.Matchers.hasKey("prazoAtendimentoAt")))
                 .andExpect(jsonPath("$[1].prazoAtendimentoAt").value(org.hamcrest.Matchers.nullValue()));
         verify(protocoloTempoRepository, times(1)).findAll();
+    }
+
+    @Test
+    void finalizarComAvaliacaoDeSuicidioRetorna204EGravaAAvaliacao() throws Exception {
+        mvc.perform(put("/pacientes/1/finalizar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comportamentoSuicida\":\"TENTATIVA\"}"))
+                .andExpect(status().isNoContent());
+
+        org.assertj.core.api.Assertions.assertThat(paciente.getComportamentoSuicida()).isEqualTo(ComportamentoSuicida.TENTATIVA);
+        org.assertj.core.api.Assertions.assertThat(paciente.getStatus()).isEqualTo(TipoStatus.FINALIZADO);
+        verify(repository).save(paciente);
+    }
+
+    @Test
+    void finalizarSemAvaliacaoDeSuicidioRetorna400ENaoGravaNada() throws Exception {
+        mvc.perform(put("/pacientes/1/finalizar"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put("/pacientes/1/finalizar").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(put("/pacientes/1/finalizar").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comportamentoSuicida\":\"TALVEZ\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(repository, never()).save(any());
+        verifyNoInteractions(painel);
     }
 }

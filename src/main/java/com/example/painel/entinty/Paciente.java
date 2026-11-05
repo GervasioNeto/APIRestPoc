@@ -2,6 +2,7 @@ package com.example.painel.entinty;
 
 import java.time.LocalDateTime;
 
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
@@ -61,6 +62,10 @@ public class Paciente {
     private Integer rechamadasTriagemCount = 0;
 
     private Integer rechamadasConsultorioCount = 0;
+
+    // Avaliação do médico ao finalizar a consulta; nula enquanto não houve consulta (ou em desistência).
+    @Enumerated(EnumType.STRING)
+    private ComportamentoSuicida comportamentoSuicida;
 
     // Calculado na fila do médico (classifiedAt + protocolo_tempo); não é persistido.
     @Transient
@@ -168,6 +173,10 @@ public class Paciente {
     public Integer getRechamadasConsultorioCount() { return rechamadasConsultorioCount; }
 
     public void setRechamadasConsultorioCount(Integer rechamadasConsultorioCount) { this.rechamadasConsultorioCount = rechamadasConsultorioCount; }
+
+    public ComportamentoSuicida getComportamentoSuicida() { return comportamentoSuicida; }
+
+    public void setComportamentoSuicida(ComportamentoSuicida comportamentoSuicida) { this.comportamentoSuicida = comportamentoSuicida; }
 
     public LocalDateTime getPrazoAtendimentoAt() { return prazoAtendimentoAt; }
 

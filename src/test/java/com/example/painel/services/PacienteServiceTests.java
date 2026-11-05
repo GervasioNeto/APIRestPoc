@@ -3,6 +3,7 @@ package com.example.painel.services;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
 import com.example.painel.entinty.ProtocoloTempo;
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
@@ -14,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -281,12 +284,22 @@ class PacienteServiceTests {
         paciente.setNome("Maria Silva");
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
 
-        pacienteService.finalizarAtendimento(1L);
+        pacienteService.finalizarAtendimento(1L, ComportamentoSuicida.IDEACAO);
 
         assertThat(paciente.getStatus()).isEqualTo(TipoStatus.FINALIZADO);
         assertThat(paciente.getNome()).isEqualTo("Paciente Anônimo");
+        assertThat(paciente.getComportamentoSuicida()).isEqualTo(ComportamentoSuicida.IDEACAO);
         verify(pacienteRepository).save(paciente);
         verify(chamadaPainelService).anonimizarChamadasDoPaciente(1L, "Paciente Anônimo");
+    }
+
+    @Test
+    void finalizarAtendimentoSemAvaliacaoDeSuicidioERecusado() {
+        assertThatThrownBy(() -> pacienteService.finalizarAtendimento(1L, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        verifyNoInteractions(pacienteRepository, chamadaPainelService);
     }
 
     @Test
