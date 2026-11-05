@@ -5,6 +5,7 @@ import com.example.painel.dto.IndicadoresResponse.Detalhamento;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.EscopoIndicadores;
 import com.example.painel.enums.TipoAtendimento;
+import com.example.painel.enums.TipoStatus;
 import com.example.painel.repository.IndicadorRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,10 @@ import java.util.*;
 
 @Service
 public class IndicadorService {
+    // Etapas em que um paciente pode desistir (status antes da desistência).
+    private static final List<TipoStatus> ETAPAS_DESISTENCIA =
+            List.of(TipoStatus.AGUARDANDO_TRIAGEM, TipoStatus.CHAMADO, TipoStatus.AGUARDANDO_CONSULTA);
+
     private final IndicadorRepository repository;
 
     public IndicadorService(IndicadorRepository repository) {
@@ -48,12 +53,16 @@ public class IndicadorService {
         for (var grupo : repository.contarPorRisco(inicio, fim, samu)) {
             if (grupo.getRisco() != null) contagens.put(grupo.getRisco(), zero(grupo.getTotal()));
         }
-        long totalRechamadas = repository.totalRechamadas(inicio, fim, samu);
-        Map<Risco, Long> pacientesRechamadosPorRisco = new EnumMap<>(Risco.class);
-        for (Risco risco : Risco.values()) pacientesRechamadosPorRisco.put(risco, 0L);
-        for (var grupo : repository.contarPacientesRechamadosPorRisco(inicio, fim, samu)) {
-            if (grupo.getRisco() != null) pacientesRechamadosPorRisco.put(grupo.getRisco(), zero(grupo.getTotal()));
+        Map<TipoStatus, Long> desistenciasPorEtapa = new EnumMap<>(TipoStatus.class);
+        for (TipoStatus etapa : ETAPAS_DESISTENCIA) desistenciasPorEtapa.put(etapa, 0L);
+        long totalDesistencias = 0;
+        for (var grupo : repository.contarDesistenciasPorEtapa(inicio, fim, samu)) {
+            totalDesistencias += zero(grupo.getTotal());
+            if (grupo.getEtapa() != null) desistenciasPorEtapa.merge(grupo.getEtapa(), zero(grupo.getTotal()), Long::sum);
         }
+        long totalRechamadas = repository.totalRechamadas(inicio, fim, samu);
+        Map<Risco, Long> rechamadasPorRisco = porRisco(repository.somarRechamadasPorRisco(inicio, fim, samu));
+        Map<Risco, Long> pacientesRechamadosPorRisco = porRisco(repository.contarPacientesRechamadosPorRisco(inicio, fim, samu));
         var medias = repository.tempoMedioEsperaPorRiscoETipo(inicio, fim, samu);
         var protocolos = repository.contarForaDoProtocoloPorRiscoETipo(inicio, fim, samu);
         List<Detalhamento> detalhes = new ArrayList<>();
@@ -77,8 +86,19 @@ public class IndicadorService {
                 tempos == null ? null : tempos.getAcolhimentoMinutos(),
                 tempos == null ? null : tempos.getClassificacaoAteMedicoMinutos(),
                 tempos == null ? null : tempos.getEntradaAteMedicoMinutos(),
-                Collections.unmodifiableMap(contagens), totalRechamadas,
-                Collections.unmodifiableMap(pacientesRechamadosPorRisco), List.copyOf(detalhes));
+                Collections.unmodifiableMap(contagens),
+                totalDesistencias, Collections.unmodifiableMap(desistenciasPorEtapa),
+                totalRechamadas, rechamadasPorRisco, pacientesRechamadosPorRisco, List.copyOf(detalhes));
+    }
+
+    // Todos os riscos presentes, com zero onde a query não trouxe grupo.
+    private static Map<Risco, Long> porRisco(List<IndicadorRepository.RiscoContagem> grupos) {
+        Map<Risco, Long> mapa = new EnumMap<>(Risco.class);
+        for (Risco risco : Risco.values()) mapa.put(risco, 0L);
+        for (var grupo : grupos) {
+            if (grupo.getRisco() != null) mapa.put(grupo.getRisco(), zero(grupo.getTotal()));
+        }
+        return Collections.unmodifiableMap(mapa);
     }
 
     private static long zero(Long valor) { return valor == null ? 0L : valor; }

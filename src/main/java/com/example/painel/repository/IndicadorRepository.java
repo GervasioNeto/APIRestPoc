@@ -2,6 +2,7 @@ package com.example.painel.repository;
 
 import com.example.painel.entinty.Paciente;
 import com.example.painel.enums.Risco;
+import com.example.painel.enums.TipoStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -62,6 +63,27 @@ public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
             @Param("fim") LocalDateTime fim,
             @Param("samu") boolean samu);
 
+    // Mesma soma de totalRechamadas, quebrada por risco (BE-02).
+    @Query("SELECT p.risco AS risco, SUM(COALESCE(p.rechamadasTriagemCount, 0) + " +
+            "COALESCE(p.rechamadasConsultorioCount, 0)) AS total FROM Paciente p " +
+            "WHERE p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO + "GROUP BY p.risco")
+    List<RiscoContagem> somarRechamadasPorRisco(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim,
+            @Param("samu") boolean samu);
+
+    // ---- Grupo 1.2: desistências reais (BE-02) ----
+
+    // Só status DESISTENCIA: quem ainda está na fila não é desistente.
+    // Quem desiste antes da triagem não tem tipo, então entra no GERAL e nunca no SAMU.
+    @Query("SELECT p.etapaDesistencia AS etapa, COUNT(p) AS total FROM Paciente p " +
+            "WHERE p.status = 'DESISTENCIA' AND p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO +
+            "GROUP BY p.etapaDesistencia")
+    List<EtapaContagem> contarDesistenciasPorEtapa(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim,
+            @Param("samu") boolean samu);
+
     // ---- Grupo 2: tempo médio de espera por risco/tipo (indicadores 14-20) ----
 
     @Query(nativeQuery = true, value =
@@ -100,6 +122,11 @@ public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
 
     interface RiscoContagem {
         Risco getRisco();
+        Long getTotal();
+    }
+
+    interface EtapaContagem {
+        TipoStatus getEtapa();
         Long getTotal();
     }
 
