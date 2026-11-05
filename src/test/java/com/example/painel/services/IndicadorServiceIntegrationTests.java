@@ -1,6 +1,7 @@
 package com.example.painel.services;
 
 import com.example.painel.enums.Risco;
+import com.example.painel.enums.TipoStatus;
 import com.example.painel.enums.EscopoIndicadores;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -59,7 +60,14 @@ class IndicadorServiceIntegrationTests {
                 .containsEntry(Risco.LARANJA, 5L).containsEntry(Risco.AMARELO, 3L)
                 .containsEntry(Risco.VERDE, 3L).containsEntry(Risco.AZUL, 2L)
                 .containsEntry(Risco.NAO_CLASSIFICADO, 2L);
+        // BE-02: a única desistência do seed é o Paciente Anônimo (Clínico), que desistiu aguardando o médico.
+        assertThat(r.totalDesistencias()).isEqualTo(1);
+        assertThat(r.desistenciasPorEtapa()).containsEntry(TipoStatus.AGUARDANDO_CONSULTA, 1L)
+                .containsEntry(TipoStatus.AGUARDANDO_TRIAGEM, 0L).containsEntry(TipoStatus.CHAMADO, 0L);
         assertThat(r.totalRechamadas()).isEqualTo(7);
+        assertThat(r.rechamadasPorRisco()).containsEntry(Risco.VERMELHO, 4L)
+                .containsEntry(Risco.LARANJA, 1L).containsEntry(Risco.AMARELO, 2L)
+                .containsEntry(Risco.VERDE, 0L).containsEntry(Risco.AZUL, 0L);
         assertThat(r.pacientesRechamadosPorRisco())
                 .containsEntry(Risco.VERMELHO, 2L)
                 .containsEntry(Risco.LARANJA, 1L)
@@ -100,7 +108,10 @@ class IndicadorServiceIntegrationTests {
         assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isNull();
         assertThat(r.contagensPorRisco().values()).allMatch(v -> v == 0);
         assertThat(r.totalRechamadas()).isZero();
+        assertThat(r.rechamadasPorRisco().values()).allMatch(v -> v == 0);
         assertThat(r.pacientesRechamadosPorRisco().values()).allMatch(v -> v == 0);
+        assertThat(r.totalDesistencias()).isZero();
+        assertThat(r.desistenciasPorEtapa().values()).allMatch(v -> v == 0);
         assertThat(r.porRiscoETipo()).allSatisfy(g -> {
             assertThat(g.tempoMedioEsperaMinutos()).isNull();
             assertThat(g.totalComProtocolo()).isZero();
@@ -150,7 +161,12 @@ class IndicadorServiceIntegrationTests {
         assertThat(r.contagensPorRisco()).containsEntry(Risco.LARANJA, 2L);
         assertThat(r.contagensPorRisco()).allSatisfy((cor, total) ->
                 assertThat(total).isEqualTo(cor == Risco.LARANJA ? 2L : 0L));
+        // BE-02: a desistência do Paciente Anônimo é Clínica e não aparece no SAMU.
+        assertThat(r.totalDesistencias()).isZero();
+        assertThat(r.desistenciasPorEtapa().values()).allMatch(v -> v == 0);
         assertThat(r.totalRechamadas()).isEqualTo(2);
+        assertThat(r.rechamadasPorRisco()).allSatisfy((cor, total) ->
+                assertThat(total).isEqualTo(cor == Risco.LARANJA ? 2L : 0L));
         assertThat(r.pacientesRechamadosPorRisco()).allSatisfy((cor, total) ->
                 assertThat(total).isEqualTo(cor == Risco.LARANJA ? 1L : 0L));
         assertThat(r.porRiscoETipo()).hasSize(15).allSatisfy(g -> {
@@ -191,7 +207,10 @@ class IndicadorServiceIntegrationTests {
                 .andExpect(jsonPath("$.tempoMedioClassificacaoAteMedicoMinutos").value(57.5))
                 .andExpect(jsonPath("$.tempoMedioEntradaAteMedicoMinutos").value(62.5))
                 .andExpect(jsonPath("$.contagensPorRisco.LARANJA").value(5))
+                .andExpect(jsonPath("$.totalDesistencias").value(1))
+                .andExpect(jsonPath("$.desistenciasPorEtapa.AGUARDANDO_CONSULTA").value(1))
                 .andExpect(jsonPath("$.totalRechamadas").value(7))
+                .andExpect(jsonPath("$.rechamadasPorRisco.VERMELHO").value(4))
                 .andExpect(jsonPath("$.pacientesRechamadosPorRisco.VERMELHO").value(2))
                 .andReturn().getResponse().getContentAsString();
         mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "GERAL"))
@@ -206,6 +225,8 @@ class IndicadorServiceIntegrationTests {
                 .andExpect(jsonPath("$.tempoMedioClassificacaoAteMedicoMinutos").value(12.5))
                 .andExpect(jsonPath("$.tempoMedioEntradaAteMedicoMinutos").value(17.5))
                 .andExpect(jsonPath("$.contagensPorRisco.LARANJA").value(2))
+                .andExpect(jsonPath("$.totalDesistencias").value(0))
+                .andExpect(jsonPath("$.desistenciasPorEtapa.AGUARDANDO_CONSULTA").value(0))
                 .andExpect(jsonPath("$.totalRechamadas").value(2))
                 .andExpect(jsonPath("$.pacientesRechamadosPorRisco.LARANJA").value(1));
         mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "INVALIDO"))
