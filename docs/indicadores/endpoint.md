@@ -32,6 +32,24 @@ calculados exclusivamente no backend:
 - `pacientesRechamadosPorRisco`: quantidade de pacientes distintos com pelo
   menos uma rechamada em cada nível de risco. O mapa sempre contém todos os
   valores de `Risco`, usando zero quando não há pacientes.
+- `rechamadasPorRisco` (BE-02): a mesma soma de `totalRechamadas`, quebrada
+  por nível de risco. Também contém todos os valores de `Risco`.
+
+## Desistências reais (BE-02)
+
+- `totalDesistencias`: pacientes com `status = DESISTENCIA` no período e escopo;
+- `desistenciasPorEtapa`: esses pacientes agrupados por `etapaDesistencia`, o
+  status em que estavam ao desistir. Sempre traz `AGUARDANDO_TRIAGEM`,
+  `CHAMADO` e `AGUARDANDO_CONSULTA`, com zero quando não há casos. Registros
+  legados sem etapa entram só no total.
+
+A conta antiga do HTML (cadastrados − classificados) tratava como desistente
+quem ainda está na fila; aqui só conta quem teve a desistência registrada.
+Quem desiste antes da triagem não tem tipo: conta no GERAL e nunca no SAMU,
+pela mesma regra de tipo nulo do escopo.
+
+`CHAMADO` aparece tanto na chamada para a triagem quanto na chamada para o
+consultório, então essa etapa não diz sozinha em qual das duas o paciente estava.
 
 Contadores nulos de registros legados valem zero. O frontend deve consumir
 esses campos diretamente e não persistir ou recalcular rechamadas em
@@ -95,6 +113,11 @@ Período de 2026-09-01T00:00:00 a 2026-09-03T23:59:59:
 | pacientesRechamadosPorRisco.VERMELHO | 2 | 0 |
 | pacientesRechamadosPorRisco.LARANJA | 1 | 1 |
 | pacientesRechamadosPorRisco.AMARELO | 1 | 0 |
+| rechamadasPorRisco.VERMELHO | 4 | 0 |
+| rechamadasPorRisco.LARANJA | 1 | 2 |
+| rechamadasPorRisco.AMARELO | 2 | 0 |
+| totalDesistencias | 1 | 0 |
+| desistenciasPorEtapa.AGUARDANDO_CONSULTA | 1 | 0 |
 
 SAMU/LARANJA: média 12.5 minutos, totalComProtocolo=2, foraDoPrazo=1,
 percentualForaDoPrazo=50.00. Em GERAL, os grupos SAMU ficam vazios; no escopo
@@ -103,6 +126,9 @@ SAMU, os grupos CLINICO e PSIQUIATRICO ficam vazios.
 No indicador 1, GERAL tem 17 amostras (inclui aguardando consulta e a
 desistência) e SAMU tem 2. Os 2 pacientes SAMU do seed têm acolhimento de 4 min
 e os demais de 2 min, para que o indicador 1 diferencie os escopos.
+
+A única desistência do seed é o "Paciente Anônimo" (Clínico, desistiu aguardando
+o médico): aparece no GERAL e não aparece no SAMU.
 
 ## Testes isolados
 
@@ -153,3 +179,12 @@ rechamados por nível de risco, ambos filtrados por período e pelo escopo
 GERAL/SAMU. Os valores são agregados no PostgreSQL e o frontend não precisa de
 `localStorage`. O seed cobre rechamadas de triagem e consultório, múltiplas
 rechamadas do mesmo paciente, registros nulos legados, escopo e período.
+
+## Registro da entrega - 05/11/2026
+
+BE-02: desistências reais por etapa (`totalDesistencias`,
+`desistenciasPorEtapa`) e soma de rechamadas por risco (`rechamadasPorRisco`),
+em cima do IND-08 (commit da Amanda trazido para esta branch). Mesmo filtro de
+período e escopo das demais queries. Testes unitários e de controller
+aprovados; os de integração (Testcontainers) precisam de Docker para rodar.
+Conferido via HTTP contra o seed num PostgreSQL local.
