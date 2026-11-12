@@ -167,6 +167,20 @@ class ChamadaPainelIntegrationTests {
     }
 
     @Test
+    void reclassificacaoDoMedicoGravaACorFinalEMantemADaTriagem() {
+        Paciente paciente = criarPacienteClassificado("Rita Reclassificada", Risco.LARANJA);
+        Consultorio consultorio = criarConsultorio(8L);
+        pacienteService.chamarParaConsultorio(paciente.getId(), consultorio.getId());
+
+        pacienteService.finalizarAtendimento(paciente.getId(), ComportamentoSuicida.NENHUM, Risco.VERMELHO);
+
+        Paciente salvo = pacienteRepository.findById(paciente.getId()).orElseThrow();
+        assertThat(salvo.getRisco()).isEqualTo(Risco.VERMELHO);
+        assertThat(salvo.getRiscoTriagem()).isEqualTo(Risco.LARANJA);
+        assertThat(salvo.getStatus()).isEqualTo(com.example.painel.enums.TipoStatus.FINALIZADO);
+    }
+
+    @Test
     void finalizarAtendimentoAnonimizaTodasAsChamadasDoPaciente() {
         Paciente paciente = criarPacienteClassificado("Pedro Alves", Risco.LARANJA);
         Paciente outro = criarPaciente("Lucia Rocha");
@@ -177,7 +191,7 @@ class ChamadaPainelIntegrationTests {
         pacienteService.chamarParaConsultorio(paciente.getId(), consultorio.getId());
         pacienteService.rechamarPaciente(paciente.getId());
 
-        pacienteService.finalizarAtendimento(paciente.getId(), ComportamentoSuicida.TENTATIVA);
+        pacienteService.finalizarAtendimento(paciente.getId(), ComportamentoSuicida.TENTATIVA, null);
 
         assertThat(pacienteRepository.findById(paciente.getId()).orElseThrow().getComportamentoSuicida())
                 .isEqualTo(ComportamentoSuicida.TENTATIVA);
