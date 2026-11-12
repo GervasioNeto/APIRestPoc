@@ -163,20 +163,41 @@ public class PacienteService {
 
     // A avaliação de ideação/tentativa de suicídio é obrigatória para finalizar. Ela sobrevive à
     // anonimização (que só remove nome, CPF e notas) porque alimenta os indicadores.
+    // riscoReclassificado (opcional): a cor do médico vira a cor final do paciente.
     @Transactional
-    public void finalizarAtendimento(Long id, ComportamentoSuicida comportamentoSuicida) {
+    public void finalizarAtendimento(Long id, ComportamentoSuicida comportamentoSuicida, Risco riscoReclassificado) {
         if (comportamentoSuicida == null) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "comportamentoSuicida é obrigatório para finalizar a consulta");
         }
 
         Paciente p = buscarPorId(id);
+        if (riscoReclassificado != null && riscoReclassificado != p.getRisco()) {
+            reclassificarPeloMedico(p, riscoReclassificado);
+        }
         p.setStatus(TipoStatus.FINALIZADO);
         p.setAtendimentoFinalizadoAt(LocalDateTime.now());
         p.setComportamentoSuicida(comportamentoSuicida);
         anonimizar(p);
         pacienteRepository.save(p);
         chamadaPainelService.anonimizarChamadasDoPaciente(p.getId(), NOME_ANONIMO);
+    }
+
+    // "risco" é a cor final (é ela que os indicadores contam); a da enfermagem fica em riscoTriagem.
+    // Só aceita cores que o protocolo define para o tipo do paciente, como na triagem.
+    private void reclassificarPeloMedico(Paciente p, Risco novoRisco) {
+        boolean existeNoProtocolo = protocoloTempoRepository.findByRiscoAndTipo(novoRisco, p.getTipo())
+                .filter(pt -> pt.getTempoMaximoMinutos() != null)
+                .isPresent();
+        if (!existeNoProtocolo) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A cor " + novoRisco + " não existe no protocolo para o atendimento " + p.getTipo());
+        }
+
+        if (p.getRiscoTriagem() == null) {
+            p.setRiscoTriagem(p.getRisco());
+        }
+        p.setRisco(novoRisco);
     }
 
     @Transactional

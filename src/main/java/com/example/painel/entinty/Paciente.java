@@ -75,6 +75,11 @@ public class Paciente {
     @Enumerated(EnumType.STRING)
     private ComportamentoSuicida comportamentoSuicida;
 
+    // Cor dada pela enfermagem, guardada só quando o médico reclassifica ao finalizar. Nesse caso
+    // "risco" passa a ser a cor do médico (a final, usada nos indicadores); nula se não houve reclassificação.
+    @Enumerated(EnumType.STRING)
+    private Risco riscoTriagem;
+
     // Calculado na fila do médico (classifiedAt + protocolo_tempo); não é persistido.
     @Transient
     private LocalDateTime prazoAtendimentoAt;
@@ -185,6 +190,10 @@ public class Paciente {
     public ComportamentoSuicida getComportamentoSuicida() { return comportamentoSuicida; }
 
     public void setComportamentoSuicida(ComportamentoSuicida comportamentoSuicida) { this.comportamentoSuicida = comportamentoSuicida; }
+
+    public Risco getRiscoTriagem() { return riscoTriagem; }
+
+    public void setRiscoTriagem(Risco riscoTriagem) { this.riscoTriagem = riscoTriagem; }
 
     public LocalDateTime getPrazoAtendimentoAt() { return prazoAtendimentoAt; }
 

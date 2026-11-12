@@ -310,7 +310,7 @@ class PacienteServiceTests {
         paciente.setNome("Maria Silva");
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
 
-        pacienteService.finalizarAtendimento(1L, ComportamentoSuicida.IDEACAO);
+        pacienteService.finalizarAtendimento(1L, ComportamentoSuicida.IDEACAO, null);
 
         assertThat(paciente.getStatus()).isEqualTo(TipoStatus.FINALIZADO);
         assertThat(paciente.getNome()).isEqualTo("Paciente Anônimo");
@@ -321,11 +321,74 @@ class PacienteServiceTests {
 
     @Test
     void finalizarAtendimentoSemAvaliacaoDeSuicidioERecusado() {
-        assertThatThrownBy(() -> pacienteService.finalizarAtendimento(1L, null))
+        assertThatThrownBy(() -> pacienteService.finalizarAtendimento(1L, null, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
 
         verifyNoInteractions(pacienteRepository, chamadaPainelService);
+    }
+
+    @Test
+    void finalizarSemReclassificacaoMantemACorDaTriagem() {
+        Paciente paciente = pacienteNaConsulta(Risco.LARANJA, TipoAtendimento.CLINICO);
+
+        pacienteService.finalizarAtendimento(1L, ComportamentoSuicida.NENHUM, null);
+
+        assertThat(paciente.getRisco()).isEqualTo(Risco.LARANJA);
+        assertThat(paciente.getRiscoTriagem()).isNull();
+        verifyNoInteractions(protocoloTempoRepository);
+    }
+
+    @Test
+    void finalizarComAMesmaCorNaoContaComoReclassificacao() {
+        Paciente paciente = pacienteNaConsulta(Risco.LARANJA, TipoAtendimento.CLINICO);
+
+        pacienteService.finalizarAtendimento(1L, ComportamentoSuicida.NENHUM, Risco.LARANJA);
+
+        assertThat(paciente.getRisco()).isEqualTo(Risco.LARANJA);
+        assertThat(paciente.getRiscoTriagem()).isNull();
+    }
+
+    @Test
+    void reclassificacaoDoMedicoViraACorFinalEGuardaADaTriagem() {
+        Paciente paciente = pacienteNaConsulta(Risco.LARANJA, TipoAtendimento.CLINICO);
+        when(protocoloTempoRepository.findByRiscoAndTipo(Risco.VERMELHO, TipoAtendimento.CLINICO))
+                .thenReturn(Optional.of(protocolo(Risco.VERMELHO, TipoAtendimento.CLINICO, 0)));
+
+        pacienteService.finalizarAtendimento(1L, ComportamentoSuicida.NENHUM, Risco.VERMELHO);
+
+        // "risco" é o que os indicadores contam: o paciente passa a ser Vermelho.
+        assertThat(paciente.getRisco()).isEqualTo(Risco.VERMELHO);
+        assertThat(paciente.getRiscoTriagem()).isEqualTo(Risco.LARANJA);
+        assertThat(paciente.getStatus()).isEqualTo(TipoStatus.FINALIZADO);
+        verify(pacienteRepository).save(paciente);
+    }
+
+    @Test
+    void reclassificacaoParaCorForaDoProtocoloERecusadaENaoFinaliza() {
+        Paciente paciente = pacienteNaConsulta(Risco.LARANJA, TipoAtendimento.CLINICO);
+        when(protocoloTempoRepository.findByRiscoAndTipo(Risco.VERDE, TipoAtendimento.CLINICO))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> pacienteService.finalizarAtendimento(1L, ComportamentoSuicida.NENHUM, Risco.VERDE))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        assertThat(paciente.getRisco()).isEqualTo(Risco.LARANJA);
+        assertThat(paciente.getRiscoTriagem()).isNull();
+        assertThat(paciente.getStatus()).isEqualTo(TipoStatus.CHAMADO);
+        verify(pacienteRepository, never()).save(any());
+        verifyNoInteractions(chamadaPainelService);
+    }
+
+    private Paciente pacienteNaConsulta(Risco risco, TipoAtendimento tipo) {
+        Paciente paciente = new Paciente();
+        paciente.setId(1L);
+        paciente.setStatus(TipoStatus.CHAMADO);
+        paciente.setRisco(risco);
+        paciente.setTipo(tipo);
+        when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
+        return paciente;
     }
 
     @Test

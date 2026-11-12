@@ -174,6 +174,34 @@ class PacienteControllerTests {
     }
 
     @Test
+    void finalizarComReclassificacaoGravaACorDoMedicoComoFinal() throws Exception {
+        paciente.setRisco(Risco.LARANJA);
+        paciente.setTipo(TipoAtendimento.CLINICO);
+        ProtocoloTempo vermelhoClinico = new ProtocoloTempo();
+        vermelhoClinico.setRisco(Risco.VERMELHO);
+        vermelhoClinico.setTipo(TipoAtendimento.CLINICO);
+        vermelhoClinico.setTempoMaximoMinutos(0);
+        when(protocoloTempoRepository.findByRiscoAndTipo(Risco.VERMELHO, TipoAtendimento.CLINICO))
+                .thenReturn(Optional.of(vermelhoClinico));
+
+        mvc.perform(put("/pacientes/1/finalizar").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comportamentoSuicida\":\"NENHUM\",\"riscoReclassificado\":\"VERMELHO\"}"))
+                .andExpect(status().isNoContent());
+
+        org.assertj.core.api.Assertions.assertThat(paciente.getRisco()).isEqualTo(Risco.VERMELHO);
+        org.assertj.core.api.Assertions.assertThat(paciente.getRiscoTriagem()).isEqualTo(Risco.LARANJA);
+    }
+
+    @Test
+    void finalizarComCorInexistenteRetorna400() throws Exception {
+        mvc.perform(put("/pacientes/1/finalizar").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comportamentoSuicida\":\"NENHUM\",\"riscoReclassificado\":\"ROXO\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     void anotacaoDaTriagemAcimaDe255CaracteresRetorna400ENaoGrava() throws Exception {
         String longa = "a".repeat(Paciente.TRIAGE_NOTES_MAX_LENGTH + 1);
 

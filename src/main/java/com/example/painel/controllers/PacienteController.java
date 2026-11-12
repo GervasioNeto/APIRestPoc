@@ -59,10 +59,11 @@ public class PacienteController {
         return ResponseEntity.noContent().build();
     }
 
-    // Corpo obrigatório: { "comportamentoSuicida": "NENHUM" | "IDEACAO" | "TENTATIVA" }; sem ele, 400.
+    // Corpo: { "comportamentoSuicida": "NENHUM" | "IDEACAO" | "TENTATIVA", "riscoReclassificado": opcional };
+    // sem comportamentoSuicida, 400.
     @PutMapping("/{id}/finalizar")
     public ResponseEntity<Void> finalizar(@PathVariable Long id, @Valid @RequestBody FinalizarAtendimentoRequest request) {
-        pacienteService.finalizarAtendimento(id, request.comportamentoSuicida());
+        pacienteService.finalizarAtendimento(id, request.comportamentoSuicida(), request.riscoReclassificado());
         return ResponseEntity.noContent().build();
     }
 

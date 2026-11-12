@@ -55,7 +55,11 @@ CREATE TABLE paciente (
     rechamadas_consultorio_count    INTEGER NOT NULL DEFAULT 0,  -- quantas vezes foi rechamado no consultório
 
     -- Avaliação obrigatória do médico ao finalizar a consulta (nula em desistência).
-    comportamento_suicida           VARCHAR(255)  -- NENHUM, IDEACAO, TENTATIVA
+    comportamento_suicida           VARCHAR(255),  -- NENHUM, IDEACAO, TENTATIVA
+
+    -- Cor da enfermagem, guardada só quando o médico reclassifica ao finalizar a consulta.
+    -- Nesse caso "risco" passa a ser a cor do médico (a final, contada nos indicadores).
+    risco_triagem                   VARCHAR(255)  -- VERMELHO, LARANJA, AMARELO, VERDE, AZUL
 );
 
 CREATE INDEX idx_paciente_chegada_at ON paciente (chegada_at);
