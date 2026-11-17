@@ -67,6 +67,27 @@ class IndicadorServiceTests {
                 .percentualForaDoPrazo()).isEqualByComparingTo("33.33");
     }
 
+    @Test void comportamentoSuicidaTrazAsTresOpcoesESeparaQuemNaoTemAvaliacao() {
+        var repository = mock(IndicadorRepository.class);
+        var service = new IndicadorService(repository);
+        var inicio = LocalDateTime.of(2026, 9, 1, 0, 0);
+        var tentativa = mock(IndicadorRepository.ComportamentoSuicidaContagem.class);
+        when(tentativa.getComportamento()).thenReturn(com.example.painel.enums.ComportamentoSuicida.TENTATIVA);
+        when(tentativa.getTotal()).thenReturn(2L);
+        var semAvaliacao = mock(IndicadorRepository.ComportamentoSuicidaContagem.class);
+        when(semAvaliacao.getComportamento()).thenReturn(null);
+        when(semAvaliacao.getTotal()).thenReturn(3L);
+        when(repository.contarComportamentoSuicida(inicio, inicio, true)).thenReturn(java.util.List.of(tentativa, semAvaliacao));
+
+        var r = service.consultarIndicadores(inicio, inicio, com.example.painel.enums.EscopoIndicadores.SAMU);
+
+        assertThat(r.comportamentoSuicida())
+                .containsEntry(com.example.painel.enums.ComportamentoSuicida.TENTATIVA, 2L)
+                .containsEntry(com.example.painel.enums.ComportamentoSuicida.IDEACAO, 0L)
+                .containsEntry(com.example.painel.enums.ComportamentoSuicida.NENHUM, 0L);
+        assertThat(r.atendidosSemAvaliacaoSuicida()).isEqualTo(3L);
+    }
+
     @Test void semDenominadorRetornaZero() {
         var service = new IndicadorService(mock(IndicadorRepository.class));
         var agora = LocalDateTime.now();
@@ -78,6 +99,8 @@ class IndicadorServiceTests {
         assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isNull();
         assertThat(r.totalRechamadas()).isZero();
         assertThat(r.rechamadasPorRisco().values()).allMatch(v -> v == 0);
+        assertThat(r.comportamentoSuicida()).hasSize(3).allSatisfy((opcao, total) -> assertThat(total).isZero());
+        assertThat(r.atendidosSemAvaliacaoSuicida()).isZero();
         assertThat(r.pacientesRechamadosPorRisco().values()).allMatch(v -> v == 0);
         assertThat(r.totalDesistencias()).isZero();
         assertThat(r.desistenciasPorEtapa()).containsOnlyKeys(TipoStatus.AGUARDANDO_TRIAGEM,

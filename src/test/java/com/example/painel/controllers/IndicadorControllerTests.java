@@ -31,7 +31,8 @@ class IndicadorControllerTests {
                 Map.of(com.example.painel.enums.Risco.LARANJA, 2L), List.of(
                         new IndicadoresResponse.Detalhamento(com.example.painel.enums.Risco.LARANJA,
                                 com.example.painel.enums.TipoAtendimento.CLINICO, 12.5,
-                                2, 1, new BigDecimal("50.00")))));
+                                2, 1, new BigDecimal("50.00"))),
+                Map.of(com.example.painel.enums.ComportamentoSuicida.IDEACAO, 1L), 1));
         mvc.perform(get("/indicadores").param("inicio", inicio).param("fim", fim))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.cadastrados").value(4))
                 .andExpect(jsonPath("$.percentualClassificados").value(75.0))
@@ -47,7 +48,9 @@ class IndicadorControllerTests {
                 .andExpect(jsonPath("$.porRiscoETipo[0].risco").value("LARANJA"))
                 .andExpect(jsonPath("$.porRiscoETipo[0].tipo").value("CLINICO"))
                 .andExpect(jsonPath("$.porRiscoETipo[0].tempoMedioEsperaMinutos").value(12.5))
-                .andExpect(jsonPath("$.porRiscoETipo[0].percentualForaDoPrazo").value(50.0));
+                .andExpect(jsonPath("$.porRiscoETipo[0].percentualForaDoPrazo").value(50.0))
+                .andExpect(jsonPath("$.comportamentoSuicida.IDEACAO").value(1))
+                .andExpect(jsonPath("$.atendidosSemAvaliacaoSuicida").value(1));
         verify(service).consultarIndicadores(java.time.LocalDateTime.parse(inicio), java.time.LocalDateTime.parse(fim), com.example.painel.enums.EscopoIndicadores.GERAL);
     }
     @Test void parametrosInvalidos() throws Exception {
@@ -69,7 +72,7 @@ class IndicadorControllerTests {
                 0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, null, null, null, Map.of(), 0, Map.of(), 0, Map.of(), Map.of(), List.of(
                         new IndicadoresResponse.Detalhamento(com.example.painel.enums.Risco.VERMELHO,
                                 com.example.painel.enums.TipoAtendimento.CLINICO, null,
-                                0, 0, BigDecimal.ZERO))));
+                                0, 0, BigDecimal.ZERO)), Map.of(), 0));
         mvc.perform(get("/indicadores").param("inicio", inicio).param("fim", inicio))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.cadastrados").value(0))
                 .andExpect(jsonPath("$.percentualAtendidos").value(0))

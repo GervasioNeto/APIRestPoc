@@ -2,6 +2,7 @@ package com.example.painel.services;
 
 import com.example.painel.dto.IndicadoresResponse;
 import com.example.painel.dto.IndicadoresResponse.Detalhamento;
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.EscopoIndicadores;
 import com.example.painel.enums.TipoAtendimento;
@@ -63,6 +64,13 @@ public class IndicadorService {
         long totalRechamadas = repository.totalRechamadas(inicio, fim, samu);
         Map<Risco, Long> rechamadasPorRisco = porRisco(repository.somarRechamadasPorRisco(inicio, fim, samu));
         Map<Risco, Long> pacientesRechamadosPorRisco = porRisco(repository.contarPacientesRechamadosPorRisco(inicio, fim, samu));
+        Map<ComportamentoSuicida, Long> comportamentoSuicida = new EnumMap<>(ComportamentoSuicida.class);
+        for (ComportamentoSuicida opcao : ComportamentoSuicida.values()) comportamentoSuicida.put(opcao, 0L);
+        long semAvaliacaoSuicida = 0;
+        for (var grupo : repository.contarComportamentoSuicida(inicio, fim, samu)) {
+            if (grupo.getComportamento() == null) semAvaliacaoSuicida += zero(grupo.getTotal());
+            else comportamentoSuicida.put(grupo.getComportamento(), zero(grupo.getTotal()));
+        }
         var medias = repository.tempoMedioEsperaPorRiscoETipo(inicio, fim, samu);
         var protocolos = repository.contarForaDoProtocoloPorRiscoETipo(inicio, fim, samu);
         List<Detalhamento> detalhes = new ArrayList<>();
@@ -88,7 +96,8 @@ public class IndicadorService {
                 tempos == null ? null : tempos.getEntradaAteMedicoMinutos(),
                 Collections.unmodifiableMap(contagens),
                 totalDesistencias, Collections.unmodifiableMap(desistenciasPorEtapa),
-                totalRechamadas, rechamadasPorRisco, pacientesRechamadosPorRisco, List.copyOf(detalhes));
+                totalRechamadas, rechamadasPorRisco, pacientesRechamadosPorRisco, List.copyOf(detalhes),
+                Collections.unmodifiableMap(comportamentoSuicida), semAvaliacaoSuicida);
     }
 
     // Todos os riscos presentes, com zero onde a query não trouxe grupo.

@@ -1,6 +1,7 @@
 package com.example.painel.repository;
 
 import com.example.painel.entinty.Paciente;
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
@@ -85,6 +86,16 @@ public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
             @Param("fim") LocalDateTime fim,
             @Param("samu") boolean samu);
 
+    // Avaliação de comportamento suicida feita pelo médico ao finalizar: só atendidos (FINALIZADO).
+    // O grupo nulo são atendimentos finalizados antes de a avaliação ser obrigatória.
+    @Query("SELECT p.comportamentoSuicida AS comportamento, COUNT(p) AS total FROM Paciente p " +
+            "WHERE p.status = 'FINALIZADO' AND p.chegadaAt BETWEEN :inicio AND :fim" + FILTRO_ESCOPO +
+            "GROUP BY p.comportamentoSuicida")
+    List<ComportamentoSuicidaContagem> contarComportamentoSuicida(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim,
+            @Param("samu") boolean samu);
+
     // ---- Grupo 2: tempo médio de espera por risco/tipo (indicadores 14-20) ----
 
     @Query(nativeQuery = true, value =
@@ -143,6 +154,11 @@ public interface IndicadorRepository extends JpaRepository<Paciente, Long> {
 
     interface EtapaContagem {
         TipoStatus getEtapa();
+        Long getTotal();
+    }
+
+    interface ComportamentoSuicidaContagem {
+        ComportamentoSuicida getComportamento();
         Long getTotal();
     }
 
