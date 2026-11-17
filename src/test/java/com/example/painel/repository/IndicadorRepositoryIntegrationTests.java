@@ -2,6 +2,7 @@ package com.example.painel.repository;
 
 import com.example.painel.entinty.Paciente;
 import com.example.painel.entinty.ProtocoloTempo;
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
@@ -358,6 +359,49 @@ class IndicadorRepositoryIntegrationTests {
                     assertThat(item.getTotal()).isEqualTo(6);
                 });
         assertThat(indicadorRepository.somarRechamadasPorRisco(inicioJanela, fimJanela, true)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Risco suicida: conta a avaliação só dos finalizados, separa quem não tem marcação e respeita o escopo")
+    void deveContarComportamentoSuicidaDosAtendidosPorEscopo() {
+        Paciente tentativa = criarPaciente("Tentativa", TipoStatus.FINALIZADO, Risco.VERMELHO,
+                TipoAtendimento.PSIQUIATRICO, inicioJanela.plusHours(1), inicioJanela.plusHours(1), null);
+        tentativa.setComportamentoSuicida(ComportamentoSuicida.TENTATIVA);
+        pacienteRepository.save(tentativa);
+
+        Paciente outraTentativa = criarPaciente("Outra tentativa", TipoStatus.FINALIZADO, Risco.LARANJA,
+                TipoAtendimento.CLINICO, inicioJanela.plusHours(2), inicioJanela.plusHours(2), null);
+        outraTentativa.setComportamentoSuicida(ComportamentoSuicida.TENTATIVA);
+        pacienteRepository.save(outraTentativa);
+
+        // Finalizado antes de a avaliação ser obrigatória.
+        pacienteRepository.save(criarPaciente("Sem avaliação", TipoStatus.FINALIZADO, Risco.VERDE,
+                TipoAtendimento.CLINICO, inicioJanela.plusHours(3), inicioJanela.plusHours(3), null));
+
+        Paciente samu = criarPaciente("SAMU", TipoStatus.FINALIZADO, Risco.LARANJA,
+                TipoAtendimento.SAMU, inicioJanela.plusHours(4), inicioJanela.plusHours(4), null);
+        samu.setComportamentoSuicida(ComportamentoSuicida.IDEACAO);
+        pacienteRepository.save(samu);
+
+        // Não entram: desistiu (sem consulta) e fora do período.
+        pacienteRepository.save(criarPaciente("Desistiu", TipoStatus.DESISTENCIA, null,
+                null, inicioJanela.plusHours(5), null, null));
+        Paciente fora = criarPaciente("Fora", TipoStatus.FINALIZADO, Risco.AZUL,
+                TipoAtendimento.CLINICO, inicioJanela.minusDays(1), inicioJanela.minusDays(1), null);
+        fora.setComportamentoSuicida(ComportamentoSuicida.NENHUM);
+        pacienteRepository.save(fora);
+        entityManager.flush();
+
+        assertThat(indicadorRepository.contarComportamentoSuicida(inicioJanela, fimJanela, false))
+                .extracting(IndicadorRepository.ComportamentoSuicidaContagem::getComportamento,
+                        IndicadorRepository.ComportamentoSuicidaContagem::getTotal)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple(ComportamentoSuicida.TENTATIVA, 2L),
+                        org.assertj.core.groups.Tuple.tuple(null, 1L));
+        assertThat(indicadorRepository.contarComportamentoSuicida(inicioJanela, fimJanela, true))
+                .extracting(IndicadorRepository.ComportamentoSuicidaContagem::getComportamento,
+                        IndicadorRepository.ComportamentoSuicidaContagem::getTotal)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(ComportamentoSuicida.IDEACAO, 1L));
     }
 
     private Paciente criarPaciente(String nome,

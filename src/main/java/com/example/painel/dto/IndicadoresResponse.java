@@ -1,5 +1,6 @@
 package com.example.painel.dto;
 
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
@@ -24,6 +25,10 @@ import java.util.Map;
  * casas e HALF_UP; denominador zero produz 0.00.
  * totalComProtocolo é a população retornada pelo JOIN com protocolo_tempo,
  * não o total de cadastrados daquele risco/tipo.
+ * comportamentoSuicida conta, entre os atendidos (FINALIZADO), a avaliação
+ * marcada pelo médico, com as três opções sempre presentes;
+ * atendidosSemAvaliacaoSuicida são os finalizados sem marcação (anteriores
+ * à obrigatoriedade).
  */
 public record IndicadoresResponse(
         long cadastrados,
@@ -40,7 +45,9 @@ public record IndicadoresResponse(
         long totalRechamadas,
         Map<Risco, Long> rechamadasPorRisco,
         Map<Risco, Long> pacientesRechamadosPorRisco,
-        List<Detalhamento> porRiscoETipo
+        List<Detalhamento> porRiscoETipo,
+        Map<ComportamentoSuicida, Long> comportamentoSuicida,
+        long atendidosSemAvaliacaoSuicida
 ) {
     public record Detalhamento(
             Risco risco, TipoAtendimento tipo, Double tempoMedioEsperaMinutos,
