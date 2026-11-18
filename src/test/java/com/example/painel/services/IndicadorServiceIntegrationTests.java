@@ -1,6 +1,8 @@
 package com.example.painel.services;
 
+import com.example.painel.enums.ComportamentoSuicida;
 import com.example.painel.enums.Risco;
+import com.example.painel.enums.TipoAtendimento;
 import com.example.painel.enums.TipoStatus;
 import com.example.painel.enums.EscopoIndicadores;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -44,19 +46,20 @@ class IndicadorServiceIntegrationTests {
 
     @Test void seedCompleto() {
         var r = service.consultarIndicadores(inicio, fim);
-        assertThat(r.cadastrados()).isEqualTo(19);
-        assertThat(r.classificados()).isEqualTo(17);
-        assertThat(r.atendidos()).isEqualTo(14);
-        assertThat(r.percentualClassificados()).isEqualByComparingTo("89.47");
-        assertThat(r.percentualAtendidos()).isEqualByComparingTo("73.68");
-        // Acolhimento: 17 amostras (inclui aguardando consulta e desistência), todas de 2 min.
-        // Classificação/entrada até médico: os 14 pares finalizados.
+        assertThat(r.cadastrados()).isEqualTo(20);
+        assertThat(r.classificados()).isEqualTo(18);
+        assertThat(r.atendidos()).isEqualTo(15);
+        assertThat(r.percentualClassificados()).isEqualByComparingTo("90.00");
+        assertThat(r.percentualAtendidos()).isEqualByComparingTo("75.00");
+        // Acolhimento: 18 amostras (inclui aguardando consulta e desistência), todas de 2 min.
+        // Classificação/entrada até médico: os 15 finalizados (14 dos pares + o reclassificado).
         assertThat(r.tempoMedioAcolhimentoMinutos()).isCloseTo(2.0, within(0.000001));
-        assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isCloseTo(57.5, within(0.000001));
-        assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isCloseTo(62.5, within(0.000001));
+        assertThat(r.tempoMedioClassificacaoAteMedicoMinutos()).isCloseTo(54.0, within(0.000001));
+        assertThat(r.tempoMedioEntradaAteMedicoMinutos()).isCloseTo(59.0, within(0.000001));
         // A contagem por risco inclui também
         // a desistência já classificada (Paciente Anônimo): GERAL tem 5 laranjas, excluindo os 2 SAMU.
-        assertThat(r.contagensPorRisco()).containsEntry(Risco.VERMELHO, 4L)
+        // O Paciente Teste 21 (LARANJA na enfermagem, VERMELHO no médico) conta como VERMELHO.
+        assertThat(r.contagensPorRisco()).containsEntry(Risco.VERMELHO, 5L)
                 .containsEntry(Risco.LARANJA, 5L).containsEntry(Risco.AMARELO, 3L)
                 .containsEntry(Risco.VERDE, 3L).containsEntry(Risco.AZUL, 2L)
                 .containsEntry(Risco.NAO_CLASSIFICADO, 2L);
@@ -75,8 +78,12 @@ class IndicadorServiceIntegrationTests {
                 .containsEntry(Risco.VERDE, 0L)
                 .containsEntry(Risco.AZUL, 0L)
                 .containsEntry(Risco.NAO_CLASSIFICADO, 0L);
+        // Só o reclassificado tem a avaliação marcada; os outros 14 atendidos são anteriores à obrigatoriedade.
+        assertThat(r.comportamentoSuicida()).containsEntry(ComportamentoSuicida.IDEACAO, 1L)
+                .containsEntry(ComportamentoSuicida.TENTATIVA, 0L).containsEntry(ComportamentoSuicida.NENHUM, 0L);
+        assertThat(r.atendidosSemAvaliacaoSuicida()).isEqualTo(14);
         var esperadas = java.util.Map.of("VERMELHO/CLINICO", 2.5, "LARANJA/CLINICO", 12.5,
-                "VERMELHO/PSIQUIATRICO", 2.5, "LARANJA/PSIQUIATRICO", 10.0,
+                "VERMELHO/PSIQUIATRICO", 10.0 / 3, "LARANJA/PSIQUIATRICO", 10.0,
                 "AMARELO/PSIQUIATRICO", 60.0, "VERDE/PSIQUIATRICO", 105.0,
                 "AZUL/PSIQUIATRICO", 210.0);
         assertThat(r.porRiscoETipo()).hasSize(15);
@@ -86,6 +93,13 @@ class IndicadorServiceIntegrationTests {
                 assertThat(g.tempoMedioEsperaMinutos()).isNull();
                 assertThat(g.totalComProtocolo()).isZero();
                 assertThat(g.percentualForaDoPrazo()).isZero();
+            } else if (g.risco() == Risco.VERMELHO && g.tipo() == TipoAtendimento.PSIQUIATRICO) {
+                // Par (0 e 5 min) + reclassificado (5 min): os 5 min estouram o prazo do VERMELHO (0),
+                // embora coubessem nos 10 min do LARANJA da enfermagem.
+                assertThat(g.tempoMedioEsperaMinutos()).isCloseTo(media, within(0.000001));
+                assertThat(g.totalComProtocolo()).isEqualTo(3);
+                assertThat(g.foraDoPrazo()).isEqualTo(2);
+                assertThat(g.percentualForaDoPrazo()).isEqualByComparingTo("66.67");
             } else {
                 assertThat(g.tempoMedioEsperaMinutos()).isCloseTo(media, within(0.000001));
                 assertThat(g.totalComProtocolo()).isEqualTo(2);
@@ -129,7 +143,7 @@ class IndicadorServiceIntegrationTests {
         assertThat(service.consultarIndicadores(instante.plusNanos(1000), instante.plusMinutes(9)).cadastrados()).isZero();
         var fora = LocalDateTime.of(2026, 8, 25, 8, 0);
         assertThat(service.consultarIndicadores(fora, fora).cadastrados()).isEqualTo(1);
-        assertThat(service.consultarIndicadores(fora, fim).cadastrados()).isEqualTo(20);
+        assertThat(service.consultarIndicadores(fora, fim).cadastrados()).isEqualTo(21);
     }
     @Test void semClassificacaoNaoTemMedia() {
         var instante = LocalDateTime.of(2026, 9, 2, 15, 0);
@@ -198,15 +212,18 @@ class IndicadorServiceIntegrationTests {
 
     @Test void endpointPadraoEquivaleAGeralESamuRespeitaEscopo() throws Exception {
         var padrao = mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.cadastrados").value(19))
-                .andExpect(jsonPath("$.classificados").value(17))
-                .andExpect(jsonPath("$.atendidos").value(14))
-                .andExpect(jsonPath("$.percentualClassificados").value(89.47))
-                .andExpect(jsonPath("$.percentualAtendidos").value(73.68))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cadastrados").value(20))
+                .andExpect(jsonPath("$.classificados").value(18))
+                .andExpect(jsonPath("$.atendidos").value(15))
+                .andExpect(jsonPath("$.percentualClassificados").value(90.0))
+                .andExpect(jsonPath("$.percentualAtendidos").value(75.0))
                 .andExpect(jsonPath("$.tempoMedioAcolhimentoMinutos").value(2.0))
-                .andExpect(jsonPath("$.tempoMedioClassificacaoAteMedicoMinutos").value(57.5))
-                .andExpect(jsonPath("$.tempoMedioEntradaAteMedicoMinutos").value(62.5))
+                .andExpect(jsonPath("$.tempoMedioClassificacaoAteMedicoMinutos").value(54.0))
+                .andExpect(jsonPath("$.tempoMedioEntradaAteMedicoMinutos").value(59.0))
+                .andExpect(jsonPath("$.contagensPorRisco.VERMELHO").value(5))
                 .andExpect(jsonPath("$.contagensPorRisco.LARANJA").value(5))
+                .andExpect(jsonPath("$.comportamentoSuicida.IDEACAO").value(1))
+                .andExpect(jsonPath("$.atendidosSemAvaliacaoSuicida").value(14))
                 .andExpect(jsonPath("$.totalDesistencias").value(1))
                 .andExpect(jsonPath("$.desistenciasPorEtapa.AGUARDANDO_CONSULTA").value(1))
                 .andExpect(jsonPath("$.totalRechamadas").value(7))
