@@ -125,18 +125,21 @@ por risco/tipo.
 
 ## Aceite com seed
 
-Período de 2026-09-01T00:00:00 a 2026-09-03T23:59:59:
+Período de 2026-09-01T00:00:00 a 2026-09-03T23:59:59. O gabarito completo,
+com os 27 indicadores, onde cada um aparece na tela e o valor esperado nos dois
+escopos, está em [`gabarito_indicadores.pdf`](gabarito_indicadores.pdf) (INT-00).
 
 | Campo | GERAL | SAMU |
 |---|---:|---:|
-| cadastrados | 19 | 2 |
-| classificados | 17 | 2 |
-| atendidos | 14 | 2 |
-| percentualClassificados | 89.47 | 100.00 |
-| percentualAtendidos | 73.68 | 100.00 |
+| cadastrados | 20 | 2 |
+| classificados | 18 | 2 |
+| atendidos | 15 | 2 |
+| percentualClassificados | 90.00 | 100.00 |
+| percentualAtendidos | 75.00 | 100.00 |
 | tempoMedioAcolhimentoMinutos | 2.0 | 4.0 |
-| tempoMedioClassificacaoAteMedicoMinutos | 57.5 | 12.5 |
-| tempoMedioEntradaAteMedicoMinutos | 62.5 | 17.5 |
+| tempoMedioClassificacaoAteMedicoMinutos | 54.0 | 12.5 |
+| tempoMedioEntradaAteMedicoMinutos | 59.0 | 17.5 |
+| contagensPorRisco.VERMELHO | 5 | 0 |
 | contagensPorRisco.LARANJA | 5 | 2 |
 | totalRechamadas | 7 | 2 |
 | pacientesRechamadosPorRisco.VERMELHO | 2 | 0 |
@@ -147,19 +150,27 @@ Período de 2026-09-01T00:00:00 a 2026-09-03T23:59:59:
 | rechamadasPorRisco.AMARELO | 2 | 0 |
 | totalDesistencias | 1 | 0 |
 | desistenciasPorEtapa.AGUARDANDO_CONSULTA | 1 | 0 |
+| comportamentoSuicida.IDEACAO | 1 | 0 |
+| atendidosSemAvaliacaoSuicida | 14 | 2 |
 
 SAMU/LARANJA: média 12.5 minutos, totalComProtocolo=2, foraDoPrazo=1,
 percentualForaDoPrazo=50.00. Em GERAL, os grupos SAMU ficam vazios; no escopo
 SAMU, os grupos CLINICO e PSIQUIATRICO ficam vazios.
 
-No indicador 1, GERAL tem 17 amostras (inclui aguardando consulta e a
+O "Paciente Teste 21" foi reclassificado pelo médico (LARANJA na enfermagem,
+VERMELHO no médico) e conta como VERMELHO. Ele esperou 5 min, dentro do prazo do
+LARANJA e fora do VERMELHO, então GERAL/VERMELHO/PSIQUIATRICO tem média 3.33
+(0, 5 e 5 min), totalComProtocolo=3, foraDoPrazo=2 e percentualForaDoPrazo=66.67.
+É também o único atendido com a avaliação de comportamento suicida marcada.
+
+No indicador 1, GERAL tem 18 amostras (inclui aguardando consulta e a
 desistência) e SAMU tem 2. Os 2 pacientes SAMU do seed têm acolhimento de 4 min
 e os demais de 2 min, para que o indicador 1 diferencie os escopos.
 
 A única desistência do seed é o "Paciente Anônimo" (Clínico, desistiu aguardando
 o médico): aparece no GERAL e não aparece no SAMU.
 
-`GET /indicadores/atendidos` devolve 14 atendidos no GERAL e 2 no SAMU. As
+`GET /indicadores/atendidos` devolve 15 atendidos no GERAL e 2 no SAMU. As
 chamadas do seed somam 7 rechamadas no GERAL e 2 no SAMU, iguais a
 `totalRechamadas`.
 

@@ -43,7 +43,7 @@ Manchester), que a aplicação não cria.
 
 ### 3. (Opcional, só em dev) Seed — `docs/indicadores/seed_teste_indicadores.sql`
 
-Insere 22 pacientes fake para testar os indicadores. Rodar da mesma forma que o `schema.sql`, **uma vez só**
+Insere 23 pacientes fake para testar os indicadores. Rodar da mesma forma que o `schema.sql`, **uma vez só**
 (o script não é idempotente: rodar de novo duplica os pacientes). Nunca rodar no banco do hospital.
 
 > ⚠️ **Os dados do seed estão em 01–03/09/2026.** Filtrando por "hoje" (ou qualquer período fora
@@ -55,9 +55,10 @@ Insere 22 pacientes fake para testar os indicadores. Rodar da mesma forma que o 
 >
 > Há também 1 paciente de controle em 25/08/2026, fora da janela de propósito.
 
-Esperado nessa janela: escopo `GERAL` (padrão) 19 cadastrados / 17 classificados / 14 atendidos;
-escopo `SAMU` 2 / 2 / 2. Detalhes em [`docs/indicadores/endpoint.md`](docs/indicadores/endpoint.md).
-Os totais em `docs/indicadores/verificar_seed_teste.sql` (21 / 19 / 16) são sem filtro de escopo.
+Esperado nessa janela: escopo `GERAL` (padrão) 20 cadastrados / 18 classificados / 15 atendidos;
+escopo `SAMU` 2 / 2 / 2. O valor esperado de cada um dos 27 indicadores, nos dois escopos, está em
+[`docs/indicadores/gabarito_indicadores.pdf`](docs/indicadores/gabarito_indicadores.pdf).
+Os totais em `docs/indicadores/verificar_seed_teste.sql` (22 / 20 / 17) são sem filtro de escopo.
 
 ## Rodando
 

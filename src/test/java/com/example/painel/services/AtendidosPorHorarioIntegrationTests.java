@@ -45,7 +45,7 @@ class AtendidosPorHorarioIntegrationTests {
     @Test void seedGeral() {
         var r = service.listar(inicio, fim, EscopoIndicadores.GERAL);
         // Mesma população do indicador de atendidos.
-        assertThat(r).hasSize((int) indicadorService.consultarIndicadores(inicio, fim).atendidos()).hasSize(14);
+        assertThat(r).hasSize((int) indicadorService.consultarIndicadores(inicio, fim).atendidos()).hasSize(15);
         assertThat(r).extracting(a -> a.chamadaConsultorioAt()).isSorted();
         assertThat(r).noneMatch(a -> a.tipo() == TipoAtendimento.SAMU);
         var primeiro = r.stream().filter(a -> a.chamadaConsultorioAt().equals(inicio.withHour(8).withMinute(5))
@@ -75,7 +75,7 @@ class AtendidosPorHorarioIntegrationTests {
     @Test void endpointNosDoisEscopos() throws Exception {
         mvc.perform(get("/indicadores/atendidos").param("inicio", inicio.toString()).param("fim", fim.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(14))
+                .andExpect(jsonPath("$.length()").value(15))
                 .andExpect(jsonPath("$[0].nome").doesNotExist());
         mvc.perform(get("/indicadores/atendidos").param("inicio", inicio.toString()).param("fim", fim.toString())
                         .param("escopo", "SAMU"))

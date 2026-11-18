@@ -10,12 +10,15 @@
 -- Um paciente fica de propósito FORA dessa janela (25/08) pra confirmar
 -- que o filtro de período dos indicadores exclui ele.
 --
--- Resultado esperado, filtrando inicio=2026-09-01 00:00 fim=2026-09-03 23:59:
---   countCadastrados      = 21  (todos os INSERTs abaixo, exceto o de 25/08)
---   countClassificados    = 19  (todos com classified_at, ou seja, exceto os 2 AGUARDANDO_TRIAGEM)
---   countAtendidos         = 16  (os 8 pares dentro/fora de protocolo, status FINALIZADO)
+-- Resultado esperado, filtrando inicio=2026-09-01 00:00 fim=2026-09-03 23:59
+-- SEM filtro de escopo (o GET /indicadores separa GERAL e SAMU; os valores
+-- por escopo estão em docs/indicadores/gabarito_indicadores.pdf):
+--   countCadastrados      = 22  (todos os INSERTs abaixo, exceto o de 25/08)
+--   countClassificados    = 20  (todos com classified_at, ou seja, exceto os 2 AGUARDANDO_TRIAGEM)
+--   countAtendidos         = 17  (os 8 pares dentro/fora de protocolo + o reclassificado, status FINALIZADO)
 --   contarForaDoProtocoloPorRiscoETipo -> pra cada uma das 8 combinações
---     risco/tipo de protocolo_tempo, total=2 e fora_do_prazo=1 (o segundo de cada par)
+--     risco/tipo de protocolo_tempo, total=2 e fora_do_prazo=1 (o segundo de cada par),
+--     exceto VERMELHO/PSIQUIATRICO: total=3 e fora_do_prazo=2 (par + reclassificado)
 --   GET /protocolos       = as 8 combinações abaixo
 -- =====================================================================
 
@@ -143,6 +146,20 @@ INSERT INTO paciente (nome, cpf, status, risco, tipo, chegada_at, chamada_triage
 ('Paciente Teste 16', '000.000.000-16', 'FINALIZADO', 'LARANJA', 'SAMU',
  TIMESTAMP '2026-09-02 08:15:00', TIMESTAMP '2026-09-02 08:19:00', TIMESTAMP '2026-09-02 08:20:00',
  TIMESTAMP '2026-09-02 08:40:00', TIMESTAMP '2026-09-02 09:00:00');
+
+-- ---------------------------------------------------------------------
+-- Reclassificado pelo médico ao finalizar: a enfermagem classificou
+-- LARANJA (risco_triagem) e o médico mudou para VERMELHO (risco). Conta
+-- como VERMELHO em todos os indicadores. A espera de 5 min fica dentro do
+-- prazo do LARANJA (10 min) e fora do VERMELHO (0 min): se o indicador
+-- usasse a cor da enfermagem, o VERMELHO/PSIQUIATRICO teria 1 fora do
+-- prazo em vez de 2. Como a avaliação de comportamento suicida é
+-- obrigatória ao finalizar, ele também tem a marcação (IDEACAO).
+-- ---------------------------------------------------------------------
+INSERT INTO paciente (nome, cpf, status, risco, risco_triagem, tipo, comportamento_suicida, chegada_at, chamada_triagem_at, classified_at, chamada_consultorio_at, atendimento_finalizado_at) VALUES
+('Paciente Teste 21', '000.000.000-21', 'FINALIZADO', 'VERMELHO', 'LARANJA', 'PSIQUIATRICO', 'IDEACAO',
+ TIMESTAMP '2026-09-03 09:00:00', TIMESTAMP '2026-09-03 09:02:00', TIMESTAMP '2026-09-03 09:05:00',
+ TIMESTAMP '2026-09-03 09:10:00', TIMESTAMP '2026-09-03 09:30:00');
 
 -- ---------------------------------------------------------------------
 -- Pacientes ainda em andamento, pra distinguir os 3 contadores base
