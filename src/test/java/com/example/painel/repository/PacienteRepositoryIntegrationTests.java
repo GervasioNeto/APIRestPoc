@@ -68,6 +68,56 @@ class PacienteRepositoryIntegrationTests {
                 .containsExactly("Cadastrado primeiro", "Cadastrado depois");
     }
 
+    @Test
+    @DisplayName("Fila do acolhimento: só quem ainda não foi classificado e não saiu do fluxo")
+    void filaAcolhimentoMostraSoQuemAindaNaoFoiClassificado() {
+        LocalDateTime chegada = LocalDateTime.of(2026, 9, 1, 10, 0);
+        Paciente aguardando = salvarNoAcolhimento("Aguardando acolhimento", TipoStatus.AGUARDANDO_TRIAGEM, null, chegada);
+        Paciente chamado = salvarNoAcolhimento("Chamado, ainda sem classificação", TipoStatus.CHAMADO, null, chegada.plusMinutes(1));
+        Paciente finalizado = salvarNoAcolhimento("Finalizado", TipoStatus.FINALIZADO, null, chegada.plusMinutes(2));
+        Paciente desistente = salvarNoAcolhimento("Desistente", TipoStatus.DESISTENCIA, null, chegada.plusMinutes(3));
+        Paciente classificado = salvarNoAcolhimento("Já classificado", TipoStatus.AGUARDANDO_CONSULTA, Risco.LARANJA, chegada.plusMinutes(4));
+
+        assertThat(filaAcolhimentoSomente(aguardando, chamado, finalizado, desistente, classificado))
+                .extracting(Paciente::getNome)
+                .containsExactly("Aguardando acolhimento", "Chamado, ainda sem classificação");
+    }
+
+    @Test
+    @DisplayName("Fila do acolhimento: ordena pela chegada, não pela ordem de cadastro")
+    void filaAcolhimentoOrdenaPelaChegada() {
+        // Cadastrados nesta ordem (ids crescentes), mas com as chegadas fora de ordem.
+        Paciente chegouPorUltimo = salvarNoAcolhimento("Chegou por último", TipoStatus.AGUARDANDO_TRIAGEM, null, LocalDateTime.of(2026, 9, 2, 16, 0));
+        Paciente chegouPrimeiro = salvarNoAcolhimento("Chegou primeiro", TipoStatus.AGUARDANDO_TRIAGEM, null, LocalDateTime.of(2026, 9, 1, 8, 0));
+        Paciente chegouNoMeio = salvarNoAcolhimento("Chegou no meio", TipoStatus.CHAMADO, null, LocalDateTime.of(2026, 9, 1, 12, 0));
+
+        assertThat(filaAcolhimentoSomente(chegouPorUltimo, chegouPrimeiro, chegouNoMeio))
+                .extracting(Paciente::getNome)
+                .containsExactly("Chegou primeiro", "Chegou no meio", "Chegou por último");
+    }
+
+    @Test
+    @DisplayName("Fila do acolhimento: mesma chegada desempata pela ordem de cadastro")
+    void filaAcolhimentoMesmaChegadaDesempataPeloCadastro() {
+        LocalDateTime chegada = LocalDateTime.of(2026, 9, 1, 10, 0);
+        Paciente primeiro = salvarNoAcolhimento("Cadastrado primeiro", TipoStatus.AGUARDANDO_TRIAGEM, null, chegada);
+        Paciente segundo = salvarNoAcolhimento("Cadastrado depois", TipoStatus.AGUARDANDO_TRIAGEM, null, chegada);
+
+        assertThat(filaAcolhimentoSomente(segundo, primeiro))
+                .extracting(Paciente::getNome)
+                .containsExactly("Cadastrado primeiro", "Cadastrado depois");
+    }
+
+    @Test
+    @DisplayName("Fila do acolhimento: sem status e sem risco continua na fila, como no filtro antigo")
+    void filaAcolhimentoMantemPacienteSemStatus() {
+        Paciente semStatus = salvarNoAcolhimento("Sem status", null, null, LocalDateTime.of(2026, 9, 1, 10, 0));
+
+        assertThat(filaAcolhimentoSomente(semStatus))
+                .extracting(Paciente::getNome)
+                .containsExactly("Sem status");
+    }
+
     // O banco de teste pode ter outros pacientes na fila; compara só a ordem relativa dos criados aqui.
     private List<Paciente> filaSomente(Paciente... pacientes) {
         List<Long> ids = java.util.Arrays.stream(pacientes).map(Paciente::getId).toList();
@@ -90,6 +140,23 @@ class PacienteRepositoryIntegrationTests {
         paciente.setTipo(TipoAtendimento.PSIQUIATRICO);
         paciente.setChegadaAt(chegada);
         paciente.setClassifiedAt(chegada.plusMinutes(5));
+        return repository.saveAndFlush(paciente);
+    }
+
+    // Mesmo cuidado do filaSomente: o banco de teste pode ter outros pacientes no acolhimento.
+    private List<Paciente> filaAcolhimentoSomente(Paciente... pacientes) {
+        List<Long> ids = java.util.Arrays.stream(pacientes).map(Paciente::getId).toList();
+        return repository.buscarFilaDeAcolhimentoOrdenada().stream()
+                .filter(p -> ids.contains(p.getId()))
+                .toList();
+    }
+
+    private Paciente salvarNoAcolhimento(String nome, TipoStatus status, Risco risco, LocalDateTime chegada) {
+        Paciente paciente = new Paciente();
+        paciente.setNome(nome);
+        paciente.setStatus(status);
+        paciente.setRisco(risco);
+        paciente.setChegadaAt(chegada);
         return repository.saveAndFlush(paciente);
     }
 }
