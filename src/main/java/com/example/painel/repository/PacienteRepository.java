@@ -41,5 +41,12 @@
 
         List<Paciente> buscarFilaDeEsperaOrdenada();
 
+        // Fila do acolhimento: quem ainda não foi classificado e não saiu do fluxo. Status nulo conta como na fila.
+        @Query("SELECT p FROM Paciente p " +
+                "WHERE p.risco IS NULL " +
+                "AND (p.status IS NULL OR p.status NOT IN ('FINALIZADO', 'DESISTENCIA')) " +
+                "ORDER BY p.chegadaAt ASC, p.id ASC")
+        List<Paciente> buscarFilaDeAcolhimentoOrdenada();
+
         List<Paciente> findByRisco(Risco risco);
     }
