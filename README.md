@@ -66,6 +66,32 @@ Os totais em `docs/indicadores/verificar_seed_teste.sql` (22 / 20 / 17) são sem
 ./mvnw spring-boot:run        # Windows: mvnw.cmd spring-boot:run
 ```
 
+### Fuso horário fixo: America/Fortaleza
+
+Os horários do paciente (chegada, chamadas, classificação, finalização) e das chamadas do painel
+são gravados no fuso do hospital, **America/Fortaleza**, sem depender do fuso do servidor ou do
+container. O fuso fica em `Configuration/HorarioConfig` (um `Clock` usado por
+`LocalDateTime.now(clock)`); não use `LocalDateTime.now()` sem ele. Assim, mesmo um servidor em UTC
+(padrão de muitos containers) grava o horário de Fortaleza, e os indicadores, o filtro por horário,
+o prazo da fila do médico e os cronômetros da tela não ficam 3 horas adiantados. Para conferir:
+
+```sh
+./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Duser.timezone=UTC"
+```
+
+### Etapas do paciente
+
+Cada ação só é aceita na etapa certa; fora dela o back responde **409** com a etapa atual na
+mensagem, sem gravar nada nem chamar no painel (tela desatualizada ou clique duplo):
+
+| Ação | Aceita quando o paciente está |
+|---|---|
+| `PUT /pacientes/{id}/chamar-triagem` | aguardando acolhimento, ou chamado ao acolhimento e ainda não classificado |
+| `PUT /pacientes/{id}/classificar` | chamado ao acolhimento, ou aguardando consulta sem consultório (reclassificação) |
+| `PUT /pacientes/{id}/chamar` | aguardando consulta sem consultório |
+| `PUT /pacientes/{id}/rechamar` e `/finalizar` | chamado ao consultório |
+| `PUT /pacientes/{id}/desistencia` | aguardando acolhimento, chamado (acolhimento ou consultório) ou aguardando consulta |
+
 ## Testes
 
 ```sh
