@@ -149,6 +149,7 @@ class PacienteControllerTests {
 
     @Test
     void finalizarComAvaliacaoDeSuicidioRetorna204EGravaAAvaliacao() throws Exception {
+        emConsulta();
         mvc.perform(put("/pacientes/1/finalizar")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"comportamentoSuicida\":\"TENTATIVA\"}"))
@@ -175,6 +176,7 @@ class PacienteControllerTests {
 
     @Test
     void finalizarComReclassificacaoGravaACorDoMedicoComoFinal() throws Exception {
+        emConsulta();
         paciente.setRisco(Risco.LARANJA);
         paciente.setTipo(TipoAtendimento.CLINICO);
         ProtocoloTempo vermelhoClinico = new ProtocoloTempo();
@@ -190,6 +192,25 @@ class PacienteControllerTests {
 
         org.assertj.core.api.Assertions.assertThat(paciente.getRisco()).isEqualTo(Risco.VERMELHO);
         org.assertj.core.api.Assertions.assertThat(paciente.getRiscoTriagem()).isEqualTo(Risco.LARANJA);
+    }
+
+    @Test
+    void finalizarDuasVezesRetorna409ComAMensagemENaoGravaNada() throws Exception {
+        paciente.setStatus(TipoStatus.FINALIZADO);
+
+        mvc.perform(put("/pacientes/1/finalizar").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"comportamentoSuicida\":\"NENHUM\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(status().reason(
+                        "Não é possível finalizar o atendimento: o paciente está com o atendimento finalizado. Atualize a tela."));
+
+        verify(repository, never()).save(any());
+        verifyNoInteractions(painel);
+    }
+
+    private void emConsulta() {
+        paciente.setStatus(TipoStatus.CHAMADO);
+        paciente.setConsultorio(new com.example.painel.entinty.Consultorio());
     }
 
     @Test
