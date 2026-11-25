@@ -76,6 +76,7 @@ class PacienteServiceTests {
     @Test
     void primeiraChamadaParaConsultorioRegistraHorario() {
         Paciente paciente = new Paciente();
+        paciente.setStatus(TipoStatus.AGUARDANDO_CONSULTA);
         Consultorio consultorio = new Consultorio();
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
         when(consultorioRepository.findById(2L)).thenReturn(Optional.of(consultorio));
@@ -93,6 +94,7 @@ class PacienteServiceTests {
     @Test
     void chamarParaConsultorioNovamentePreservaHorarioDaPrimeiraChamada() {
         Paciente paciente = new Paciente();
+        paciente.setStatus(TipoStatus.AGUARDANDO_CONSULTA);
         Consultorio consultorio = new Consultorio();
         LocalDateTime primeiraChamada = LocalDateTime.of(2026, 9, 29, 10, 0);
         paciente.setChamadaConsultorioAt(primeiraChamada);
@@ -116,6 +118,7 @@ class PacienteServiceTests {
         Consultorio outroConsultorio = new Consultorio();
         outroConsultorio.setNumero(3L);
         Paciente paciente = new Paciente();
+        paciente.setStatus(TipoStatus.CHAMADO);
         paciente.setConsultorio(outroConsultorio);
         when(consultorioRepository.findById(2L)).thenReturn(Optional.of(meuConsultorio));
         when(pacienteRepository.reservarParaConsultorio(1L, meuConsultorio)).thenReturn(0);
@@ -194,6 +197,7 @@ class PacienteServiceTests {
         Paciente paciente = new Paciente();
         Consultorio consultorio = new Consultorio();
         LocalDateTime primeiraChamada = LocalDateTime.of(2026, 9, 29, 10, 0);
+        paciente.setStatus(TipoStatus.CHAMADO);
         paciente.setConsultorio(consultorio);
         paciente.setChamadaConsultorioAt(primeiraChamada);
         paciente.setRechamadasTriagemCount(3);
@@ -216,6 +220,7 @@ class PacienteServiceTests {
     @Test
     void rechamadaDeConsultorioTrataContadorNuloComoZero() {
         Paciente paciente = new Paciente();
+        paciente.setStatus(TipoStatus.CHAMADO);
         paciente.setConsultorio(new Consultorio());
         paciente.setRechamadasConsultorioCount(null);
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
@@ -232,8 +237,8 @@ class PacienteServiceTests {
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
 
         assertThatThrownBy(() -> pacienteService.rechamarPaciente(1L))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessage("Paciente não está em atendimento");
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
 
         assertThat(paciente.getRechamadasConsultorioCount()).isZero();
         verify(pacienteRepository, never()).save(any());
@@ -308,6 +313,8 @@ class PacienteServiceTests {
         Paciente paciente = new Paciente();
         paciente.setId(1L);
         paciente.setNome("Maria Silva");
+        paciente.setStatus(TipoStatus.CHAMADO);
+        paciente.setConsultorio(new Consultorio());
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
 
         pacienteService.finalizarAtendimento(1L, ComportamentoSuicida.IDEACAO, null);
@@ -385,6 +392,7 @@ class PacienteServiceTests {
         Paciente paciente = new Paciente();
         paciente.setId(1L);
         paciente.setStatus(TipoStatus.CHAMADO);
+        paciente.setConsultorio(new Consultorio());
         paciente.setRisco(risco);
         paciente.setTipo(tipo);
         when(pacienteRepository.findById(1L)).thenReturn(Optional.of(paciente));
