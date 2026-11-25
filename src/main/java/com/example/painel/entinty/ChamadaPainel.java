@@ -1,5 +1,6 @@
 package com.example.painel.entinty;
 
+import com.example.painel.Configuration.HorarioConfig;
 import com.example.painel.enums.Risco;
 import com.example.painel.enums.TipoChamadaPainel;
 import jakarta.persistence.Entity;
@@ -37,7 +38,8 @@ public class ChamadaPainel {
     @PrePersist
     void prePersist() {
         if (criadaEm == null) {
-            criadaEm = LocalDateTime.now();
+            // A entidade não recebe beans: usa o mesmo fuso fixo do HorarioConfig (BE-06).
+            criadaEm = LocalDateTime.now(HorarioConfig.FUSO_HOSPITAL);
         }
     }
 

@@ -13,6 +13,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -21,11 +22,14 @@ public class ChamadaPainelService {
 
     private final ChamadaPainelRepository chamadaPainelRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final Clock clock;
 
     public ChamadaPainelService(ChamadaPainelRepository chamadaPainelRepository,
-                                ApplicationEventPublisher eventPublisher) {
+                                ApplicationEventPublisher eventPublisher,
+                                Clock clock) {
         this.chamadaPainelRepository = chamadaPainelRepository;
         this.eventPublisher = eventPublisher;
+        this.clock = clock;
     }
 
     @Transactional
@@ -76,7 +80,7 @@ public class ChamadaPainelService {
         chamada.setNomePaciente(paciente.getNome());
         chamada.setTipo(tipo);
         chamada.setRisco(paciente.getRisco());
-        chamada.setCriadaEm(LocalDateTime.now());
+        chamada.setCriadaEm(LocalDateTime.now(clock));
         return chamada;
     }
 

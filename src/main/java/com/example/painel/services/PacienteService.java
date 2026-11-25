@@ -1,5 +1,6 @@
 package com.example.painel.services;
 
+import com.example.painel.Configuration.HorarioConfig;
 import com.example.painel.dto.HistoricoChamadaResponse;
 import com.example.painel.entinty.Consultorio;
 import com.example.painel.entinty.Paciente;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,10 @@ public class PacienteService {
     @Autowired
     private ProtocoloTempoRepository protocoloTempoRepository;
 
+    // Fuso fixo do hospital (BE-06); o valor inicial vale para quem instancia sem o Spring.
+    @Autowired
+    private Clock clock = HorarioConfig.relogioDoHospital();
+
     // CRUD Básico
     public List<Paciente> listarTodos() {
         return pacienteRepository.findAll();
@@ -52,7 +58,7 @@ public class PacienteService {
     @Transactional
     public Paciente criar(Paciente paciente) {
         paciente.setStatus(TipoStatus.AGUARDANDO_TRIAGEM);
-        paciente.setChegadaAt(LocalDateTime.now());
+        paciente.setChegadaAt(LocalDateTime.now(clock));
         return pacienteRepository.save(paciente);
     }
 
@@ -76,7 +82,7 @@ public class PacienteService {
         p.setRisco(dados.getRisco());
         p.setTipo(dados.getTipo());
         p.setTriageNotes(dados.getTriageNotes());
-        p.setClassifiedAt(LocalDateTime.now());
+        p.setClassifiedAt(LocalDateTime.now(clock));
         p.setStatus(TipoStatus.AGUARDANDO_CONSULTA);
         return pacienteRepository.save(p);
     }
@@ -158,7 +164,7 @@ public class PacienteService {
         p.setStatus(TipoStatus.CHAMADO);
 
         if (p.getChamadaTriagemAt() == null) {
-            p.setChamadaTriagemAt(LocalDateTime.now());
+            p.setChamadaTriagemAt(LocalDateTime.now(clock));
         }
 
         Paciente salvo = pacienteRepository.save(p);
@@ -187,7 +193,7 @@ public class PacienteService {
         p.setStatus(TipoStatus.CHAMADO);
 
         if (p.getChamadaConsultorioAt() == null) {
-            p.setChamadaConsultorioAt(LocalDateTime.now());
+            p.setChamadaConsultorioAt(LocalDateTime.now(clock));
         }
 
         Paciente salvo = pacienteRepository.save(p);
@@ -220,7 +226,7 @@ public class PacienteService {
             reclassificarPeloMedico(p, riscoReclassificado);
         }
         p.setStatus(TipoStatus.FINALIZADO);
-        p.setAtendimentoFinalizadoAt(LocalDateTime.now());
+        p.setAtendimentoFinalizadoAt(LocalDateTime.now(clock));
         p.setComportamentoSuicida(comportamentoSuicida);
         anonimizar(p);
         pacienteRepository.save(p);
@@ -252,7 +258,7 @@ public class PacienteService {
                 Etapa.AGUARDANDO_CONSULTA, Etapa.CHAMADO_CONSULTORIO);
         p.setEtapaDesistencia(p.getStatus());
         p.setStatus(TipoStatus.DESISTENCIA);
-        p.setAtendimentoFinalizadoAt(LocalDateTime.now());
+        p.setAtendimentoFinalizadoAt(LocalDateTime.now(clock));
         anonimizar(p);
         pacienteRepository.save(p);
         chamadaPainelService.anonimizarChamadasDoPaciente(p.getId(), NOME_ANONIMO);
