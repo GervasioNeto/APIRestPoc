@@ -71,6 +71,8 @@ public class PacienteService {
     @Transactional
     public Paciente classificar(Long id, Paciente dados) {
         Paciente p = buscarPorId(id);
+        // Aguardando consulta sem consultório é a reclassificação feita no acolhimento.
+        exigirEtapa(p, "classificar", Etapa.CHAMADO_ACOLHIMENTO, Etapa.AGUARDANDO_CONSULTA);
         p.setRisco(dados.getRisco());
         p.setTipo(dados.getTipo());
         p.setTriageNotes(dados.getTriageNotes());
@@ -113,9 +115,45 @@ public class PacienteService {
 
     private record ChaveProtocolo(Risco risco, TipoAtendimento tipo) {}
 
+    // ---- Etapas (BE-04) ----
+    // Cada ação só vale numa etapa. Fora dela responde 409 sem gravar nada nem chamar no painel:
+    // tela desatualizada ou clique duplo não podem, por exemplo, finalizar duas vezes ou chamar quem desistiu.
+    enum Etapa {
+        AGUARDANDO_ACOLHIMENTO("aguardando acolhimento"),
+        CHAMADO_ACOLHIMENTO("chamado para o acolhimento"),
+        AGUARDANDO_CONSULTA("aguardando consulta"),
+        CHAMADO_CONSULTORIO("chamado ao consultório"),
+        FINALIZADO("com o atendimento finalizado"),
+        DESISTIU("com desistência registrada");
+
+        private final String descricao;
+
+        Etapa(String descricao) { this.descricao = descricao; }
+    }
+
+    static Etapa etapaDe(Paciente p) {
+        TipoStatus status = p.getStatus() == null ? TipoStatus.AGUARDANDO_TRIAGEM : p.getStatus();
+        return switch (status) {
+            case AGUARDANDO_TRIAGEM -> Etapa.AGUARDANDO_ACOLHIMENTO;
+            case AGUARDANDO_CONSULTA -> p.getConsultorio() == null ? Etapa.AGUARDANDO_CONSULTA : Etapa.CHAMADO_CONSULTORIO;
+            case CHAMADO -> p.getConsultorio() == null ? Etapa.CHAMADO_ACOLHIMENTO : Etapa.CHAMADO_CONSULTORIO;
+            case FINALIZADO -> Etapa.FINALIZADO;
+            case DESISTENCIA -> Etapa.DESISTIU;
+        };
+    }
+
+    private static void exigirEtapa(Paciente p, String acao, Etapa... aceitas) {
+        Etapa atual = etapaDe(p);
+        if (!List.of(aceitas).contains(atual)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível " + acao + ": o paciente está " + atual.descricao + ". Atualize a tela.");
+        }
+    }
+
     @Transactional
     public Paciente chamarParaTriagem(Long id) {
         Paciente p = buscarPorId(id);
+        exigirEtapa(p, "chamar para o acolhimento", Etapa.AGUARDANDO_ACOLHIMENTO, Etapa.CHAMADO_ACOLHIMENTO);
 
         p.setStatus(TipoStatus.CHAMADO);
 
@@ -133,6 +171,7 @@ public class PacienteService {
     public Paciente chamarParaConsultorio(Long id, Long consultorioId) {
         Consultorio c = consultorioRepository.findById(consultorioId)
                 .orElseThrow(() -> new RuntimeException("Consultório não encontrado"));
+        exigirEtapaParaChamarAoConsultorio(buscarPorId(id));
 
         // Dois médicos podem clicar quase juntos: só o primeiro reserva o paciente; o segundo recebe 409.
         if (pacienteRepository.reservarParaConsultorio(id, c) == 0) {
@@ -157,6 +196,14 @@ public class PacienteService {
         return salvo;
     }
 
+    // Já chamado por um consultório mantém a mensagem de qual consultório chamou (vinda da reserva).
+    private static void exigirEtapaParaChamarAoConsultorio(Paciente p) {
+        Etapa atual = etapaDe(p);
+        if (atual != Etapa.CHAMADO_CONSULTORIO) {
+            exigirEtapa(p, "chamar ao consultório", Etapa.AGUARDANDO_CONSULTA);
+        }
+    }
+
     // A avaliação de ideação/tentativa de suicídio é obrigatória para finalizar. Ela sobrevive à
     // anonimização (que só remove nome, CPF e notas) porque alimenta os indicadores.
     // riscoReclassificado (opcional): a cor do médico vira a cor final do paciente.
@@ -168,6 +215,7 @@ public class PacienteService {
         }
 
         Paciente p = buscarPorId(id);
+        exigirEtapa(p, "finalizar o atendimento", Etapa.CHAMADO_CONSULTORIO);
         if (riscoReclassificado != null && riscoReclassificado != p.getRisco()) {
             reclassificarPeloMedico(p, riscoReclassificado);
         }
@@ -199,6 +247,9 @@ public class PacienteService {
     @Transactional
     public void registrarDesistencia(Long id) {
         Paciente p = buscarPorId(id);
+        // As três etapas de status: aguardando acolhimento, chamado (acolhimento ou consultório) e aguardando consulta.
+        exigirEtapa(p, "registrar desistência", Etapa.AGUARDANDO_ACOLHIMENTO, Etapa.CHAMADO_ACOLHIMENTO,
+                Etapa.AGUARDANDO_CONSULTA, Etapa.CHAMADO_CONSULTORIO);
         p.setEtapaDesistencia(p.getStatus());
         p.setStatus(TipoStatus.DESISTENCIA);
         p.setAtendimentoFinalizadoAt(LocalDateTime.now());
@@ -229,10 +280,7 @@ public class PacienteService {
     @Transactional
     public Paciente rechamarPaciente(Long id) {
         Paciente p = buscarPorId(id);
-
-        if (p.getConsultorio() == null) {
-            throw new RuntimeException("Paciente não está em atendimento");
-        }
+        exigirEtapa(p, "rechamar ao consultório", Etapa.CHAMADO_CONSULTORIO);
 
         // NÃO remove da consulta
         // Apenas dispara novo chamado
