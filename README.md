@@ -106,3 +106,8 @@ mensagem, sem gravar nada nem chamar no painel (tela desatualizada ou clique dup
   ```sh
   ./mvnw test '-Dtest=!IndicadorRepositoryIntegrationTests,!IndicadorServiceIntegrationTests'
   ```
+
+### CI
+
+Todo PR e todo push em `develop` e `main` rodam `./mvnw -B verify` (build e todos os testes) no
+GitHub Actions, com um PostgreSQL 16 para o `painel_test` ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
