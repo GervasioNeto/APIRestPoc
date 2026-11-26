@@ -31,6 +31,16 @@ public class IndicadorController {
         return service.consultarIndicadores(inicio, fim, escopo);
     }
 
+    /**
+     * POST /indicadores/acesso: a tela de senha confere a senha aqui. Quem valida é o
+     * IndicadoresAcessoInterceptor; chegar até este método já significa senha certa (204).
+     * Senha errada ou ausente: 401; senha não configurada no servidor: 503.
+     */
+    @PostMapping("/acesso")
+    public ResponseEntity<Void> validarAcesso() {
+        return ResponseEntity.noContent().build();
+    }
+
     @ExceptionHandler(IndicadorService.PeriodoInvalidoException.class)
     public ResponseEntity<Map<String, String>> periodoInvalido(IndicadorService.PeriodoInvalidoException ex) {
         return ResponseEntity.badRequest().body(Map.of("erro", ex.getMessage()));

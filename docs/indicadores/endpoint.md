@@ -2,6 +2,21 @@
 
 documentação de como consultar e interpretar o GET /indicadores
 
+## Senha (INT-10)
+
+Todas as rotas `/indicadores` exigem a senha dos indicadores no cabeçalho
+`X-Indicadores-Senha`. A senha fica no `.env` do back (`INDICADORES_SENHA`), nunca no front.
+
+- `POST /indicadores/acesso`: usado pela tela de senha. 204 se a senha estiver certa.
+- Senha ausente ou errada: **401** `{ "erro": "Senha dos indicadores incorreta." }`.
+- `INDICADORES_SENHA` não configurada no servidor: **503** em todas as rotas `/indicadores`.
+  O resto da API (filas, painel) continua funcionando.
+
+```http
+GET /indicadores?inicio=2026-09-01T00:00:00&fim=2026-09-03T23:59:59
+X-Indicadores-Senha: <senha>
+```
+
 ## Parâmetros
 
 - `inicio` e `fim`: obrigatórios, data/hora ISO local sem fuso, por exemplo
