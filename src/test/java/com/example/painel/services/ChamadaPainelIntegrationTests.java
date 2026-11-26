@@ -111,6 +111,7 @@ class ChamadaPainelIntegrationTests {
         assertThat(pacienteRepository.findById(paciente.getId()).orElseThrow().getConsultorio().getId())
                 .isEqualTo(primeiro.getId());
         assertThat(chamadasDoPaciente(paciente.getId()))
+                .filteredOn(chamada -> chamada.getTipo() == TipoChamadaPainel.CONSULTORIO)
                 .extracting(ChamadaPainel::getConsultorioNumero).containsExactly(6L);
     }
 
@@ -124,9 +125,11 @@ class ChamadaPainelIntegrationTests {
 
         List<ChamadaPainel> chamadas = chamadaPainelRepository.findTop10ByOrderByCriadaEmDescIdDesc();
 
-        assertThat(chamadas).hasSize(2);
+        // Mais recente primeiro: a rechamada, a chamada ao consultório e a do acolhimento.
+        assertThat(chamadas).hasSize(3);
         assertThat(chamadas).allMatch(chamada -> chamada.getPacienteId().equals(paciente.getId()));
-        assertThat(chamadas).allMatch(chamada -> chamada.getTipo() == TipoChamadaPainel.CONSULTORIO);
+        assertThat(chamadas).extracting(ChamadaPainel::getTipo).containsExactly(
+                TipoChamadaPainel.CONSULTORIO, TipoChamadaPainel.CONSULTORIO, TipoChamadaPainel.TRIAGEM);
     }
 
     @Test
@@ -186,7 +189,6 @@ class ChamadaPainelIntegrationTests {
         Paciente outro = criarPaciente("Lucia Rocha");
         Consultorio consultorio = criarConsultorio(5L);
 
-        pacienteService.chamarParaTriagem(paciente.getId());
         pacienteService.chamarParaTriagem(outro.getId());
         pacienteService.chamarParaConsultorio(paciente.getId(), consultorio.getId());
         pacienteService.rechamarPaciente(paciente.getId());
@@ -247,8 +249,10 @@ class ChamadaPainelIntegrationTests {
         return pacienteService.criar(paciente);
     }
 
+    // Mesmo fluxo da tela: só classifica quem foi chamado ao acolhimento (BE-04).
     private Paciente criarPacienteClassificado(String nome, Risco risco) {
         Paciente paciente = criarPaciente(nome);
+        pacienteService.chamarParaTriagem(paciente.getId());
 
         Paciente dados = new Paciente();
         dados.setRisco(risco);
