@@ -9,7 +9,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
+import static com.example.painel.Configuration.IndicadoresAcessoInterceptor.CABECALHO_SENHA;
+import static org.hamcrest.Matchers.containsStringIgnoringCase;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +45,8 @@ class IndicadorServiceIntegrationTests {
     @Autowired IndicadorService service;
     @Autowired MockMvc mvc;
     @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+    // indicadores.senha em application-test.properties
+    private static final String SENHA = "senha-de-teste";
     private final LocalDateTime inicio = LocalDateTime.of(2026, 9, 1, 0, 0);
     private final LocalDateTime fim = LocalDateTime.of(2026, 9, 3, 23, 59, 59);
 
@@ -211,7 +217,7 @@ class IndicadorServiceIntegrationTests {
     }
 
     @Test void endpointPadraoEquivaleAGeralESamuRespeitaEscopo() throws Exception {
-        var padrao = mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()))
+        var padrao = mvc.perform(get("/indicadores").header(CABECALHO_SENHA, SENHA).param("inicio", inicio.toString()).param("fim", fim.toString()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.cadastrados").value(20))
                 .andExpect(jsonPath("$.classificados").value(18))
                 .andExpect(jsonPath("$.atendidos").value(15))
@@ -230,9 +236,9 @@ class IndicadorServiceIntegrationTests {
                 .andExpect(jsonPath("$.rechamadasPorRisco.VERMELHO").value(4))
                 .andExpect(jsonPath("$.pacientesRechamadosPorRisco.VERMELHO").value(2))
                 .andReturn().getResponse().getContentAsString();
-        mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "GERAL"))
+        mvc.perform(get("/indicadores").header(CABECALHO_SENHA, SENHA).param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "GERAL"))
                 .andExpect(status().isOk()).andExpect(content().json(padrao));
-        mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "SAMU"))
+        mvc.perform(get("/indicadores").header(CABECALHO_SENHA, SENHA).param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "SAMU"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.cadastrados").value(2))
                 .andExpect(jsonPath("$.classificados").value(2))
                 .andExpect(jsonPath("$.atendidos").value(2))
@@ -246,7 +252,30 @@ class IndicadorServiceIntegrationTests {
                 .andExpect(jsonPath("$.desistenciasPorEtapa.AGUARDANDO_CONSULTA").value(0))
                 .andExpect(jsonPath("$.totalRechamadas").value(2))
                 .andExpect(jsonPath("$.pacientesRechamadosPorRisco.LARANJA").value(1));
-        mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "INVALIDO"))
+        mvc.perform(get("/indicadores").header(CABECALHO_SENHA, SENHA).param("inicio", inicio.toString()).param("fim", fim.toString()).param("escopo", "INVALIDO"))
                 .andExpect(status().isBadRequest());
+    }
+
+    // INT-10: sem a senha dos indicadores (ou com a errada) o back recusa, e o navegador consegue ler a recusa.
+    @Test void semSenhaOuComSenhaErradaResponde401() throws Exception {
+        mvc.perform(get("/indicadores").param("inicio", inicio.toString()).param("fim", fim.toString())
+                        .header("Origin", "http://localhost:8080"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().exists("Access-Control-Allow-Origin"))
+                .andExpect(jsonPath("$.erro").value("Senha dos indicadores incorreta."));
+        mvc.perform(post("/indicadores/acesso").header(CABECALHO_SENHA, "errada"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/indicadores/acesso").header(CABECALHO_SENHA, SENHA))
+                .andExpect(status().isNoContent());
+    }
+
+    // O navegador pergunta antes (preflight) se pode mandar o cabeçalho da senha; sem senha, isso precisa passar.
+    @Test void preflightDoNavegadorLiberaOCabecalhoDaSenha() throws Exception {
+        mvc.perform(options("/indicadores")
+                        .header("Origin", "http://localhost:8080")
+                        .header("Access-Control-Request-Method", "GET")
+                        .header("Access-Control-Request-Headers", CABECALHO_SENHA))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Headers", containsStringIgnoringCase(CABECALHO_SENHA)));
     }
 }

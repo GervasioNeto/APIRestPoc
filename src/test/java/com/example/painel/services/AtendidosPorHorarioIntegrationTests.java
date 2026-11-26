@@ -19,6 +19,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.*;
+import static com.example.painel.Configuration.IndicadoresAcessoInterceptor.CABECALHO_SENHA;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -39,6 +40,8 @@ class AtendidosPorHorarioIntegrationTests {
     @Autowired AtendidosPorHorarioService service;
     @Autowired IndicadorService indicadorService;
     @Autowired MockMvc mvc;
+    // indicadores.senha em application-test.properties
+    private static final String SENHA = "senha-de-teste";
     private final LocalDateTime inicio = LocalDateTime.of(2026, 9, 1, 0, 0);
     private final LocalDateTime fim = LocalDateTime.of(2026, 9, 3, 23, 59, 59);
 
@@ -73,16 +76,16 @@ class AtendidosPorHorarioIntegrationTests {
     }
 
     @Test void endpointNosDoisEscopos() throws Exception {
-        mvc.perform(get("/indicadores/atendidos").param("inicio", inicio.toString()).param("fim", fim.toString()))
+        mvc.perform(get("/indicadores/atendidos").header(CABECALHO_SENHA, SENHA).param("inicio", inicio.toString()).param("fim", fim.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(15))
                 .andExpect(jsonPath("$[0].nome").doesNotExist());
-        mvc.perform(get("/indicadores/atendidos").param("inicio", inicio.toString()).param("fim", fim.toString())
+        mvc.perform(get("/indicadores/atendidos").header(CABECALHO_SENHA, SENHA).param("inicio", inicio.toString()).param("fim", fim.toString())
                         .param("escopo", "SAMU"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].tipo").value("SAMU"));
-        mvc.perform(get("/indicadores/atendidos").param("inicio", fim.toString()).param("fim", inicio.toString()))
+        mvc.perform(get("/indicadores/atendidos").header(CABECALHO_SENHA, SENHA).param("inicio", fim.toString()).param("fim", inicio.toString()))
                 .andExpect(status().isBadRequest());
     }
 }

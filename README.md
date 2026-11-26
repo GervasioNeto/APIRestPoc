@@ -8,8 +8,13 @@ A aplicação conecta em `localhost:5432`, banco `painel`, usuário `postgres`.
 A senha vem de `DB_PASSWORD`, lida do arquivo `.env` na raiz do projeto (fora do Git):
 
 ```sh
-cp .env.example .env    # depois preencha DB_PASSWORD
+cp .env.example .env    # depois preencha DB_PASSWORD e INDICADORES_SENHA
 ```
+
+No mesmo `.env` fica `INDICADORES_SENHA`, a senha da tela de Indicadores. O back confere essa
+senha em todas as rotas `/indicadores` (cabeçalho `X-Indicadores-Senha`); ela não fica no front.
+Sem ela, só os indicadores respondem 503, e o resto do sistema funciona normalmente. Detalhes em
+[`docs/indicadores/endpoint.md`](docs/indicadores/endpoint.md).
 
 ### 1. Subir o Postgres
 
